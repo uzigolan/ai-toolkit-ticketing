@@ -1,0 +1,5 @@
+# Everything in this directory is TLS material: certificates, private keys and
+# CSRs. None of it belongs in git, so ignore the lot and keep only this file so
+# the directory itself still exists in a fresh clone.
+*
+!.gitignore

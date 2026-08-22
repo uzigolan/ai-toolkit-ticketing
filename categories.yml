@@ -1,0 +1,122 @@
+# Ticket taxonomy for the RAD AI Ticketing Center.
+#
+# Edit this file to change the toolkits, categories, device families, severities
+# and the facets offered on the submit form -- no code change needed. The app
+# reads it at startup, so restart after editing. Point TICKETING_CATEGORIES_FILE
+# at a different path to use another file.
+#
+# The `id` values are what get stored in the database and in exported eval
+# cases, so keep them stable: renaming an id orphans the tickets already filed
+# under it (they still display, just by their raw id). Labels are free to change
+# at any time.
+
+# Which AI toolkit the ticket is about. This is the first thing a submitter
+# picks, because everything else -- who triages it, which repo the eval case
+# lands in -- follows from it. Add a line here when a new toolkit appears; no
+# code change and no migration needed. `default: true` is preselected on the
+# form; move it to whichever toolkit gets the most tickets.
+toolkits:
+  - id: rad-agent-toolkit
+    label: rad-agent-toolkit
+    default: true
+  - id: radview-ai-toolkit
+    label: radview-ai-toolkit
+  - id: pikachu-ai-toolkit
+    label: pikachu-ai-toolkit
+  - id: synergy-ccm-mcp
+    label: synergy-ccm-mcp
+  - id: other
+    label: Something else / not listed yet
+
+# What went wrong. Multi-select: a slow answer that also needed three retries
+# and still came back wrong is one ticket with three boxes ticked, not three
+# tickets.
+categories:
+  - id: wrong_result
+    label: Wrong result
+  - id: bad_format
+    label: Right, but wrong format
+  - id: slow_result
+    label: Right, but too slow
+  - id: many_retries
+    label: Took too many retries
+
+# Device families the report covers. Multi-select -- "this is wrong on ETX and
+# SecFlow both" is one ticket.
+rad_families:
+  - ETX
+  - SecFlow
+  - Megaplex
+  - MiNID
+  - ETX-2V
+  - n/a
+
+# Whether answering needed RAD-specific knowledge, general market/industry
+# knowledge, or both. `default: true` ticks the box on a fresh form -- RAD is
+# ticked because it applies to nearly every ticket here.
+knowledge_scope:
+  - id: rad
+    label: RAD knowledge (RAD products, manuals, CLI)
+    default: true
+  - id: market
+    label: Market knowledge (general networking / industry)
+
+# Which reference material the answer should have come from. Tick as many as
+# apply -- "the CLI reference disagreed with the manual" is a common shape, and
+# it points triage straight at the source that needs fixing.
+knowledge_sources:
+  - id: manual
+    label: User manual
+  - id: datasheet
+    label: Datasheet
+  - id: release_notes
+    label: Release notes / TRS
+  - id: cli
+    label: CLI reference
+  - id: mib
+    label: MIB / SNMP
+  - id: mea
+    label: MEA / debug tree
+  - id: skills
+    label: Agent skills & instructions
+  - id: vendor
+    label: Vendor docs (Altera / FPGA)
+
+# What the agent was actually doing. Also a combination: a question that ends in
+# a config change touches all three, and the risk grows down the list.
+operations:
+  - id: lookup
+    label: Knowledge lookup (no device)
+  - id: design
+    label: Architecture / design / planning
+  - id: device_read
+    label: Device read (show / get info)
+  - id: device_write
+    label: Device change (set / stage / commit)
+
+severities:
+  - id: low
+    label: Low
+  - id: normal
+    label: Normal
+  - id: high
+    label: High — blocking my work
+
+# What an admin can do with a finished ticket. Admins never close: they hand the
+# ticket back to whoever filed it, and only that person can close it as verified.
+#   status:           the state the ticket moves into.
+#   requires_version: demands the `rad agent show versions` output of the build
+#                     that carries the fix.
+#   requires_answer:  demands the corrected answer, produced by re-running the
+#                     submitter's original prompt against that build.
+#   requires_note:    demands an explanation.
+resolutions:
+  - id: fixed
+    label: Fixed — ready for verification
+    status: ready_for_verification
+    requires_version: true
+    requires_answer: true
+  - id: known_issue
+    label: Known issue — not fixed for now
+    status: known_issue
+    requires_note: true

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Local secrets and state — never commit these
+config.ini
+.secret_key
+tickets.sqlite
+exports/*.json

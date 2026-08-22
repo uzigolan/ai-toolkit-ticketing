@@ -1,0 +1,36 @@
+[SERVER]
+; Plain HTTP is served alongside HTTPS when both are enabled. Set
+; http_enabled = false to serve TLS only. Login sends credentials in the
+; request body, so only serve plain HTTP on localhost or behind a
+; TLS-terminating proxy.
+http_enabled = true
+http_port = 5000
+
+[HTTPS]
+; Serve TLS directly, instead of putting nginx/Apache in front. The app refuses
+; to start if this is true and the files below are missing, rather than
+; quietly falling back to plaintext.
+; Put the cert and key under https/ -- everything in that directory is
+; git-ignored, so private keys can't be committed by accident.
+enabled = false
+port = 444
+ssl_cert = https/tls.cert.pem
+ssl_key = https/tls.key.pem
+
+[LDAP]
+; Flip to true once the details below are real.
+enabled = false
+LDAP_HOST = ldap.yourcompany.com
+LDAP_PORT = 389
+LDAP_USE_SSL = false
+; Container that holds user entries directly (tried first)
+LDAP_PEOPLE_DN = ou=people,dc=yourcompany,dc=com
+; Search base used with admin bind fallback
+LDAP_BASE_DN = dc=yourcompany,dc=com
+; Only needed if direct bind DN patterns don't match your directory
+; (typical for Active Directory with sAMAccountName logins)
+LDAP_ADMIN_DN = cn=svc-ticketing,ou=service-accounts,dc=yourcompany,dc=com
+LDAP_ADMIN_PASSWORD = change-me
+
+; Set enabled to false (or delete this section) to run on local accounts only.
+; Leaving LDAP_HOST empty also disables LDAP, whatever enabled says.

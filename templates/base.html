@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.get('username') %}
+  <nav class="app-navbar">
+    <a href="{{ url_for('all_tickets') }}" class="navbar-brand">
+      RAD AI
+      <small>Ticketing Center &middot; v{{ app_version }}</small>
+    </a>
+    <div class="app-nav">
+      <a class="nav-link {% if request.endpoint == 'new_ticket' %}active{% endif %}"
+         href="{{ url_for('new_ticket') }}">Submit</a>
+      <a class="nav-link {% if request.endpoint == 'all_tickets' %}active{% endif %}"
+         href="{{ url_for('all_tickets') }}">All tickets</a>
+      <a class="nav-link {% if request.endpoint == 'my_tickets' %}active{% endif %}"
+         href="{{ url_for('my_tickets') }}">My tickets</a>
+      {% if session.get('role') == 'admin' %}
+        <a class="nav-link {% if request.endpoint == 'admin_queue' %}active{% endif %}"
+           href="{{ url_for('admin_queue') }}">Triage</a>
+        <a class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}"
+           href="{{ url_for('admin_users') }}">Users</a>
+      {% endif %}
+      {% if session.get('auth_source') == 'local' %}
+        <a class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}"
+           href="{{ url_for('change_password') }}">Password</a>
+      {% endif %}
+      <a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
+      <span class="nav-user">
+        {{ session.get('display_name') }}
+        <small>{{ session.get('role') }} &middot; {{ session.get('auth_source') }}</small>
+      </span>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="app-shell">
+    <div class="app-container {% block container_class %}{% endblock %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+    <p class="app-footer">{{ app_name }} v{{ app_version }}</p>
+  </div>
+
+  <script>
+    // Stored timestamps are UTC; show them in the reader's timezone, two-digit year.
+    (function () {
+      var pad = function (n) { return String(n).padStart(2, "0"); };
+      document.querySelectorAll("time.ts[data-utc]").forEach(function (el) {
+        var d = new Date(el.dataset.utc);
+        if (isNaN(d.getTime())) { return; }
+        var date = pad(d.getFullYear() % 100) + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+        var time = pad(d.getHours()) + ":" + pad(d.getMinutes());
+        el.textContent = el.dataset.mode === "date" ? date
+                       : el.dataset.mode === "time" ? time
+                       : date + " " + time;
+        el.title = d.toLocaleString();
+      });
+    })();
+  </script>
+</body>
+</html>

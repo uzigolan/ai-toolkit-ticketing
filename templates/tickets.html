@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ title }}</h1>
+<p class="page-subtitle">{{ subtitle }}</p>
+
+{% if list_route != 'my_tickets' %}
+<div class="filters">
+  <a href="{{ url_for(list_route, **list_args(status=None)) }}"
+     class="{% if not active_status %}active{% endif %}">All</a>
+  {% for value, label in [('new', 'New'), ('triaged', 'Triaged'),
+                          ('ready_for_verification', 'Ready for verification'),
+                          ('known_issue', 'Known issue'), ('verified', 'Verified'),
+                          ('duplicate', 'Duplicates')] %}
+    <a href="{{ url_for(list_route, **list_args(status=value)) }}"
+       class="{% if active_status == value %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+<div class="filters">
+  <a href="{{ url_for(list_route, **list_args(toolkit=None)) }}"
+     class="{% if not active_toolkit %}active{% endif %}">Every toolkit</a>
+  {% for value, label in toolkits %}
+    <a href="{{ url_for(list_route, **list_args(toolkit=value)) }}"
+       class="{% if active_toolkit == value %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="list-toolbar">
+  <form method="get" class="search-form">
+    {% for key, value in list_args(q=None, page=None).items() %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <input type="search" name="q" value="{{ search_query }}" class="form-control search-input"
+           placeholder="Search title, prompt, chat, suggestion or submitter">
+    <button type="submit" class="btn btn-soft btn-sm">Search</button>
+    {% if search_query %}
+      <a href="{{ url_for(list_route, **list_args(q=None, page=None)) }}"
+         class="btn btn-ghost btn-sm">Clear</a>
+    {% endif %}
+  </form>
+
+  <form method="get" class="search-form">
+    {% for key, value in list_args(page_size=None, page=None).items() %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <label for="page_size" class="form-hint" style="margin:0;">Show</label>
+    <select id="page_size" name="page_size" class="form-control page-size"
+            onchange="this.form.submit()">
+      {% for size in page_sizes %}
+        <option value="{{ size }}" {% if page_size == size %}selected{% endif %}>{{ size }}</option>
+      {% endfor %}
+    </select>
+    <span class="form-hint" style="margin:0;">
+      Page {{ page }} / {{ total_pages }} ({{ total }} total)
+    </span>
+  </form>
+
+  <div class="pager">
+    {% if page > 1 %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for(list_route, **list_args(page=page - 1)) }}">&larr; Previous</a>
+    {% else %}
+      <button class="btn btn-ghost btn-sm" disabled>&larr; Previous</button>
+    {% endif %}
+    {% if page < total_pages %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for(list_route, **list_args(page=page + 1)) }}">Next &rarr;</a>
+    {% else %}
+      <button class="btn btn-ghost btn-sm" disabled>Next &rarr;</button>
+    {% endif %}
+  </div>
+</div>
+
+{# Clicking a header sorts by it; clicking the active one flips the direction. #}
+{% macro sort_head(key, label, css) -%}
+  {% set is_active = sort == key %}
+  {% set next_dir = 'asc' if not is_active or direction == 'desc' else 'desc' %}
+  <th class="{{ css }}">
+    <a class="sort-link {% if is_active %}active{% endif %}"
+       href="{{ url_for(list_route, **list_args(sort=key, dir=next_dir)) }}">
+      {{ label }}<span class="sort-arrow">{% if is_active %}{{ '&#9650;'|safe if direction == 'asc' else '&#9660;'|safe }}{% endif %}</span>
+    </a>
+  </th>
+{%- endmacro %}
+
+<div class="table-wrap">
+<table class="table-modern">
+  <thead>
+    <tr>
+      {{ sort_head('id', '#', 'col-id') }}
+      {{ sort_head('toolkit', 'Toolkit', 'col-toolkit') }}
+      {{ sort_head('title', 'Title', 'col-title') }}
+      {{ sort_head('categories', 'What went wrong', 'col-cats') }}
+      <th class="col-facets">Data &amp; activity</th>
+      {{ sort_head('severity', 'Severity', 'col-sev') }}
+      {{ sort_head('status', 'Status', 'col-status') }}
+      {% if list_route == 'my_tickets' %}
+        <th class="col-actions">Actions</th>
+      {% else %}
+        {{ sort_head('submitter', 'Submitter', 'col-submitter') }}
+      {% endif %}
+      {{ sort_head('updated', 'Updated', 'col-updated') }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tickets %}
+    <tr class="{% if t.submitter_username == session.get('username') %}row-mine{% endif %}">
+      <td class="col-id">{{ t.id }}</td>
+      <td class="col-toolkit"><span class="facet-pill facet-toolkit">{{ toolkit_label(t.toolkit) }}</span></td>
+      <td class="col-title">
+        <a href="{{ url_for('ticket_detail', ticket_id=t.id) }}">{{ t.title }}</a>
+        {% if counts.get(t.id) %}
+          <span class="status-pill status-duplicate">{{ counts.get(t.id) }} follow-up{{ 's' if counts.get(t.id) > 1 }}</span>
+        {% endif %}
+      </td>
+      <td class="col-cats">
+        {% for c in as_ids(t.categories) %}
+          <span class="facet-pill facet-cat-{{ c }}">{{ category_label(c) }}</span>
+        {% endfor %}
+      </td>
+      <td class="col-facets">
+        {% for s in as_ids(t.knowledge_sources) %}
+          <span class="facet-pill facet-source">{{ source_label(s) }}</span>
+        {% endfor %}
+        {% for o in as_ids(t.operations) %}
+          <span class="facet-pill facet-op-{{ o }}">{{ operation_label(o) }}</span>
+        {% endfor %}
+      </td>
+      <td class="col-sev"><span class="status-pill sev-{{ t.severity }}">{{ t.severity }}</span></td>
+      <td class="col-status">
+        <span class="status-pill status-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
+        {% if t.status == 'duplicate' %}<div class="form-hint" style="margin:0;">of #{{ t.duplicate_of }}</div>{% endif %}
+      </td>
+      {% if list_route == 'my_tickets' %}
+        <td class="col-actions">
+          {% set settled = t.status in ('verified',) %}
+          <div class="actions">
+            <a class="btn btn-soft btn-sm"
+               href="{{ url_for('ticket_detail', ticket_id=t.id) }}#add">Add</a>
+            {% if not settled %}
+              <a class="btn btn-ghost btn-sm"
+                 href="{{ url_for('edit_ticket', ticket_id=t.id) }}">Edit</a>
+              <form method="post" action="{{ url_for('delete_ticket', ticket_id=t.id) }}"
+                    onsubmit="return confirm('Delete ticket #{{ t.id }}? This cannot be undone.');">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-danger-soft btn-sm" type="submit">Delete</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      {% else %}
+        <td class="col-submitter">{{ t.submitter_username }}</td>
+      {% endif %}
+      <td class="col-updated">
+        {{ local_time(t.updated_at, 'date') }}
+        <div class="form-hint" style="margin:0;">{{ local_time(t.updated_at, 'time') }}</div>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="9" class="empty-state">
+        {% if search_query %}
+          Nothing matches &ldquo;{{ search_query }}&rdquo;.
+        {% else %}
+          No tickets here yet.
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

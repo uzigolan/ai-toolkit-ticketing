@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ app_name }}</h1>
+<p class="page-subtitle">
+  {% if ldap_enabled %}
+    Sign in with your company directory account, or a local account issued by an administrator.
+  {% else %}
+    Company directory login is not configured; sign in with a local account issued by an administrator.
+  {% endif %}
+</p>
+<div class="content-card">
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="form-field">
+      <label for="username">Username</label>
+      <input class="form-control" type="text" id="username" name="username" autofocus required>
+    </div>
+    <div class="form-field">
+      <label for="password">Password</label>
+      <input class="form-control" type="password" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Log in</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ heading }}</h1>
+<p class="page-subtitle">{{ form_subtitle }}</p>
+
+<form method="post" action="{{ action_url }}">
+  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+  <div class="content-card">
+    <div class="form-field">
+      <label for="toolkit">Which toolkit is this about?</label>
+      <span class="form-hint">
+        Everything else follows from this — who triages the ticket, and which repo the
+        eval case ends up in. If yours isn't listed yet, pick the last option.
+      </span>
+      <select class="form-control" id="toolkit" name="toolkit" required>
+        {% for value, label in toolkits %}
+          <option value="{{ value }}"
+            {% if form.get('toolkit', default_toolkit) == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label>What went wrong</label>
+      <span class="form-hint">
+        Tick everything that applies — a slow answer that also needed three retries
+        and still came back wrong is one ticket, not three.
+      </span>
+      <div class="check-grid">
+        {% for value, label in categories %}
+          <label class="check-item">
+            <input type="checkbox" name="categories" value="{{ value }}"
+                   {% if value in form.getlist('categories') %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="prompt">The prompt you used</label>
+      <span class="form-hint">
+        Just the request you gave the agent, on its own — not the whole conversation.
+        Keeping it separate means it can be re-run against a fixed build to prove the
+        problem is gone, and it becomes the prompt of the eval case.
+      </span>
+      <textarea class="form-control mono" id="prompt" name="prompt" rows="3"
+                placeholder="e.g. how do I rate limit a service to 100M on etx-2i">{{ form.get('prompt', '') }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label for="transcript">Paste the whole chat</label>
+      <span class="form-hint">
+        In the Copilot chat panel, right-click &rarr; <strong>Copy All</strong>, then paste
+        here with Ctrl+V. No need to trim or summarize it — the whole conversation is
+        more useful than the part you think matters.
+      </span>
+      <textarea class="form-control paste-area" id="transcript" name="transcript"
+                placeholder="Right-click in Copilot chat → Copy All → paste here...">{{ form.get('transcript', '') }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label for="toolkit_version">Version output of the toolkit</label>
+      <span class="form-hint">
+        Run the toolkit's version command in the same session and paste the output
+        (<code>rad agent show versions</code> for rad-agent-toolkit) — it pins the ticket
+        to an exact build.
+      </span>
+      <textarea class="form-control mono" id="toolkit_version" name="toolkit_version"
+                rows="4" placeholder="e.g. rad agent show versions">{{ form.get('toolkit_version', '') }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label for="suggestion">
+        What would fix it — or what's the right answer?
+        <span class="label-optional">optional</span>
+      </label>
+      <span class="form-hint">
+        Often the most valuable box on this form. Either say what should change ("add the
+        policer syntax to the CLI reference", "this logic should check the family first",
+        "answer as a table, not prose"), or just paste the correct answer if you know it —
+        that becomes what the fix is checked against.
+      </span>
+      <textarea class="form-control" id="suggestion" name="suggestion" rows="5"
+                placeholder="Add this logic / index that document / or paste the answer it should have given">{{ form.get('suggestion', '') }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label>Data involved <span class="label-optional">optional</span></label>
+      <span class="form-hint">
+        Where the answer should have come from. Tick as many as apply — "the CLI
+        reference disagreed with the manual" is a common shape.
+      </span>
+      <div class="check-grid">
+        {% for value, label in knowledge_sources %}
+          <label class="check-item">
+            <input type="checkbox" name="knowledge_sources" value="{{ value }}"
+                   {% if value in form.getlist('knowledge_sources') %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label>Knowledge needed</label>
+      <span class="form-hint">
+        RAD-specific knowledge, general market knowledge, or both.
+      </span>
+      <div class="check-grid">
+        {% for scope in knowledge_scope %}
+          <label class="check-item">
+            <input type="checkbox" name="knowledge_scope" value="{{ scope.id }}"
+                   {% if scope.id in form.getlist('knowledge_scope')
+                         or (not form and scope.default) %}checked{% endif %}>
+            <span>{{ scope.label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label>What the agent was doing <span class="label-optional">optional</span></label>
+      <span class="form-hint">
+        Also a combination — a design discussion that ends in a config change touches
+        several of these.
+      </span>
+      <div class="check-grid">
+        {% for value, label in operations %}
+          <label class="check-item">
+            <input type="checkbox" name="operations" value="{{ value }}"
+                   {% if value in form.getlist('operations') %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field" style="margin-bottom:0;">
+      <label for="severity">Severity</label>
+      <select class="form-control" id="severity" name="severity">
+        {% for value, label in severities %}
+          <option value="{{ value }}"
+            {% if form.get('severity', default_severity) == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="submit-bar">
+    <button type="submit" class="btn btn-primary" id="submit-ticket">{{ submit_label }}</button>
+    {% if ticket %}
+      <a class="btn btn-ghost" href="{{ url_for('ticket_detail', ticket_id=ticket.id) }}">Cancel</a>
+    {% endif %}
+    <span class="form-hint" id="submit-hint" style="margin:0;"></span>
+  </div>
+</form>
+
+<script>
+  // Keep submit out of reach until the ticket would actually be accepted, and
+  // say what is missing rather than just greying out.
+  (function () {
+    var form = document.querySelector("form");
+    var button = document.getElementById("submit-ticket");
+    var hint = document.getElementById("submit-hint");
+    var toolkit = document.getElementById("toolkit");
+    var prompt = document.getElementById("prompt");
+    var transcript = document.getElementById("transcript");
+
+    function check() {
+      var missing = [];
+      if (!toolkit.value) { missing.push("a toolkit"); }
+      if (!form.querySelector('input[name="categories"]:checked')) {
+        missing.push("what went wrong");
+      }
+      if (!prompt.value.trim() && !transcript.value.trim()) {
+        missing.push("the prompt or the pasted chat");
+      }
+      button.disabled = missing.length > 0;
+      hint.textContent = missing.length ? "Still needed: " + missing.join(", ") + "." : "";
+    }
+
+    form.addEventListener("input", check);
+    form.addEventListener("change", check);
+    check();
+  })();
+</script>
+{% endblock %}

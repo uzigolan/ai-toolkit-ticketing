@@ -1,0 +1,40 @@
+[Unit]
+Description=RAD AI Ticketing Center
+Documentation=file:///opt/rad-ticketing/README.md
+After=network.target
+
+[Service]
+Type=simple
+User=radticketing
+Group=radticketing
+WorkingDirectory=/opt/rad-ticketing
+
+# Secrets and settings live here, not in the unit file:
+#   TICKETING_SECRET_KEY, TICKETING_ADMINS, TICKETING_DB,
+#   TICKETING_CATEGORIES_FILE, TICKETING_BOOTSTRAP_ADMIN
+EnvironmentFile=/etc/sysconfig/rad-ticketing
+
+# Schema first, then serve. A migration failure stops the unit rather than
+# leaving the app running against a half-built database.
+ExecStartPre=/opt/rad-ticketing/.venv/bin/python /opt/rad-ticketing/migrate_db.py
+ExecStart=/opt/rad-ticketing/.venv/bin/python -m waitress \
+    --listen=127.0.0.1:${TICKETING_PORT} \
+    app:app
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rad-ticketing
+
+# Harden the process
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/opt/rad-ticketing
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

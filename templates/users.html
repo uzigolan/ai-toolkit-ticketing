@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block container_class %}wide{% endblock %}
+{% block content %}
+<h1 class="page-title">Users</h1>
+<p class="page-subtitle">
+  LDAP accounts appear here automatically after their owner's first successful login;
+  their passwords stay in the directory. Local accounts are created below and are the
+  way in when LDAP isn't configured or a user has no directory entry.
+</p>
+
+<div class="table-wrap">
+<table class="table-modern">
+  <thead>
+    <tr>
+      <th>Username</th><th class="col-name">Name</th><th class="col-email">Email</th><th>Source</th>
+      <th>Role</th><th>Status</th><th class="col-updated">Last login</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in user_list %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td class="col-name">{{ u.display_name }}</td>
+        <td class="col-email">{{ u.email }}</td>
+        <td><span class="badge-source badge-source-{{ u.auth_source }}">{{ u.auth_source }}</span></td>
+        <td>{{ u.role }}</td>
+        <td><span class="status-pill status-{{ u.status }}">{{ u.status }}</span></td>
+        <td class="col-updated">{{ local_time(u.last_login) }}</td>
+        <td>
+          <div class="actions">
+            <form method="post" action="{{ url_for('admin_user_action', user_id=u.id, action='role') }}">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="role" value="{{ 'user' if u.role == 'admin' else 'admin' }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Make {{ 'user' if u.role == 'admin' else 'admin' }}</button>
+            </form>
+            {% if u.status == 'active' %}
+              <form method="post" action="{{ url_for('admin_user_action', user_id=u.id, action='disable') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">Disable</button>
+              </form>
+            {% else %}
+              <form method="post" action="{{ url_for('admin_user_action', user_id=u.id, action='enable') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-soft btn-sm" type="submit">Enable</button>
+              </form>
+            {% endif %}
+            {% if u.auth_source == 'local' %}
+              <form method="post" action="{{ url_for('admin_user_action', user_id=u.id, action='password') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <input class="form-control reset-password" type="password" name="new_password"
+                       placeholder="New password" required>
+                <button class="btn btn-ghost btn-sm" type="submit">Reset</button>
+              </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin_user_action', user_id=u.id, action='delete') }}"
+                  onsubmit="return confirm('Delete {{ u.username }}?');">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger-soft btn-sm" type="submit">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<div class="content-card" style="margin-top:24px;">
+  <div class="section-label">Create a local account</div>
+  <form method="post">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row">
+      <div class="form-field">
+        <label for="new_username">Username</label>
+        <input class="form-control" type="text" id="new_username" name="username" required>
+      </div>
+      <div class="form-field">
+        <label for="display_name">Display name</label>
+        <input class="form-control" type="text" id="display_name" name="display_name">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input class="form-control" type="email" id="email" name="email">
+      </div>
+      <div class="form-field">
+        <label for="new_user_password">Password</label>
+        <span class="form-hint">At least 8 characters.</span>
+        <input class="form-control" type="password" id="new_user_password" name="password" minlength="8" required>
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="role">Role</label>
+      <select class="form-control" id="role" name="role">
+        <option value="user" selected>User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Create account</button>
+  </form>
+</div>
+{% endblock %}
