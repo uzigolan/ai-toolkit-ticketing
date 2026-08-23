@@ -38,7 +38,12 @@ from version import APP_NAME, APP_VERSION
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("TICKETING_SECRET_KEY", "change-me-in-config")
-logging.basicConfig(level=logging.INFO)
+# TICKETING_LOG_LEVEL=DEBUG turns on the LDAP bind/search trail in ldap_auth.
+logging.basicConfig(
+    level=os.environ.get("TICKETING_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+app.logger.setLevel(logging.getLogger().level)
 
 # Categories, sub-categories, families and severities are vocabulary, not code:
 # they come from categories.yml so they can be changed without touching Python.
@@ -79,7 +84,13 @@ def load_ldap_config():
     cfg.read("config.ini")
     if "LDAP" not in cfg:
         return {}
-    return {k.upper(): v for k, v in cfg["LDAP"].items()}
+    values = {k.upper(): v for k, v in cfg["LDAP"].items()}
+    # BASE_DN and LDAP_BASE_DN mean the same thing; ldap_auth reads the prefixed
+    # spelling, so an unprefixed key is aliased rather than ignored.
+    for key, value in list(values.items()):
+        if not key.startswith("LDAP_"):
+            values.setdefault(f"LDAP_{key}", value)
+    return values
 
 
 LDAP_CONFIG = load_ldap_config()

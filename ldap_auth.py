@@ -76,14 +76,22 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
 
     short_username = username.split("@", 1)[0] if "@" in username else username
     server = Server(host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=5)
+    _log(logger, "debug",
+         f"LDAP auth for '{username}': {'ldaps' if use_ssl else 'ldap'}://{host}:{port} "
+         f"people_dn={people_dn or '(unset)'} base_dn={base_dn or '(unset)'} "
+         f"admin_dn={'set' if admin_dn else '(unset)'}")
 
     # 1) Direct bind attempts
-    for dn in _build_dn_candidates(username, base_dn, people_dn):
+    candidates = _build_dn_candidates(username, base_dn, people_dn)
+    _log(logger, "debug", f"LDAP direct-bind candidates: {len(candidates)}")
+    for dn in candidates:
         try:
             conn = Connection(server, user=dn, password=password, auto_bind=True, receive_timeout=5)
             conn.unbind()
+            _log(logger, "debug", f"LDAP direct bind succeeded as {dn}")
             return {"dn": dn, "email": None, "display_name": short_username}
-        except LDAPBindError:
+        except LDAPBindError as exc:
+            _log(logger, "debug", f"LDAP direct bind rejected for {dn}: {exc}")
             continue
         except LDAPException as exc:
             _log(logger, "warning", f"LDAP bind attempt failed for {dn}: {exc}")
@@ -94,6 +102,7 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
             admin_conn = Connection(server, user=admin_dn, password=admin_password,
                                      auto_bind=True, receive_timeout=5)
             admin_conn.check_names = False
+            _log(logger, "debug", f"LDAP admin bind succeeded as {admin_dn}")
         except LDAPException as exc:
             _log(logger, "error", f"LDAP admin bind failed: {exc}")
             return None
@@ -105,6 +114,7 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
             ")"
         )
         try:
+            _log(logger, "debug", f"LDAP search base={base_dn} filter={search_filter}")
             admin_conn.search(
                 search_base=base_dn,
                 search_filter=search_filter,
@@ -112,7 +122,12 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
                 attributes=["mail", "displayName", "cn"],
             )
             entries = admin_conn.entries or []
+            _log(logger, "debug",
+                 f"LDAP search returned {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}: "
+                 f"{[e.entry_dn for e in entries[:5]]}")
             if not entries:
+                _log(logger, "warning",
+                     f"LDAP search found no entry for '{username}' under {base_dn}")
                 return None
             entry = entries[0]
             user_dn = entry.entry_dn
@@ -125,6 +140,7 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
                 user_conn = Connection(server, user=user_dn, password=password,
                                         auto_bind=True, receive_timeout=5)
                 user_conn.unbind()
+                _log(logger, "debug", f"LDAP bind succeeded for discovered DN {user_dn}")
                 return {"dn": user_dn, "email": email, "display_name": display_name}
             except LDAPException as exc:
                 _log(logger, "warning", f"LDAP bind failed for discovered DN {user_dn}: {exc}")
@@ -133,5 +149,10 @@ def ldap_authenticate(username: str, password: str, cfg: Dict, logger=None) -> O
                 admin_conn.unbind()
             except Exception:
                 pass
+    else:
+        _log(logger, "debug",
+             "LDAP admin search skipped: LDAP_ADMIN_DN, LDAP_ADMIN_PASSWORD or "
+             "LDAP_BASE_DN is not set.")
 
+    _log(logger, "warning", f"LDAP authentication exhausted all strategies for '{username}'")
     return None

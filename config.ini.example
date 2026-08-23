@@ -25,6 +25,8 @@ ssl_key = https/tls.key.pem
 
 [LDAP]
 ; Flip to true once the details below are real.
+; The LDAP_ prefix is optional: BASE_DN and LDAP_BASE_DN are the same key, so
+; an [LDAP] block copied from the PKI repo works as-is.
 enabled = false
 LDAP_HOST = ldap.yourcompany.com
 LDAP_PORT = 389

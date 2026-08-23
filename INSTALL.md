@@ -101,6 +101,7 @@ local-accounts-only install.
 | `TICKETING_ADMINS` | *(empty)* | Comma-separated usernames seeded as admins on first sight |
 | `TICKETING_BOOTSTRAP_ADMIN` | `admin` | Username of the first local admin |
 | `TICKETING_BOOTSTRAP_PASSWORD` | *(generated)* | Password of the first local admin |
+| `TICKETING_LOG_LEVEL` | `INFO` | Set to `DEBUG` for the full LDAP bind/search trail |
 | `FLASK_RUN_PORT` | `5000` | Port for the development server when only one listener is enabled |
 
 Files:
@@ -449,6 +450,7 @@ rm -rf ~/ai-toolkit-ticketing          # this deletes the ticket database
 | `Python was not found` on Windows | PATH points at the Store stub. Use `py -3`, or turn off the aliases in Settings → Apps → Advanced app settings → App execution aliases. |
 | Everyone is logged out after a restart | `TICKETING_SECRET_KEY` changed between runs. Set it permanently. |
 | Login always fails, no LDAP errors | `config.ini` has `enabled = false`, or no `LDAP_HOST`. Only local accounts work in that state. |
+| LDAP login fails and you need to see why | Put `TICKETING_LOG_LEVEL=DEBUG` in `.env`, restart, and watch `sudo journalctl -u rad-ticketing -f`. Every bind DN tried, the search filter and the DNs returned are logged; passwords never are. |
 | Login hangs for ~30s then fails | `enabled = true` but `LDAP_HOST` is unreachable. Fix the host or disable LDAP. |
 | Lost the admin password | Delete no data: use `python -c "import users; users.set_password(users.get_user('admin')['id'], 'new-password')"` from the repo root with the venv active. |
 | Form shows raw ids like `slow_result` | The taxonomy changed but the process is still running the old one. Restart. |
