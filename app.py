@@ -331,6 +331,12 @@ def index():
     return redirect(url_for("new_ticket"))
 
 
+@app.route("/favicon.ico")
+def favicon():
+    """Browsers ask for /favicon.ico regardless of the <link> tags."""
+    return redirect(url_for("static", filename="favicon.svg"))
+
+
 CHAT_SPEAKERS = ("user", "assistant", "github copilot", "copilot", "you", "me")
 
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="RAD AI Ticketing Center">
+  <!-- Mortarboard: four shapes, so it still reads at 16px. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#134e6f"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <path d="M16 7 29 12.4 16 17.8 3 12.4z" fill="#ffffff"/>
+  <path d="M9.5 15.1v4.6c0 1.8 2.9 3 6.5 3s6.5-1.2 6.5-3v-4.6L16 18.2z" fill="#ffffff" opacity="0.9"/>
+  <path d="M28.2 12.9v6.2" fill="none" stroke="#fbbf24" stroke-width="1.7" stroke-linecap="round"/>
+  <circle cx="28.2" cy="20.4" r="1.9" fill="#fbbf24"/>
+</svg>
