@@ -89,6 +89,7 @@ never import application modules themselves.
 `config.ini` decides what the built-in server listens on:
 
 - `[SERVER] http_enabled` / `http_port` — the plain listener (default `5000`).
+- `[SERVER] bind` — the interface both listeners use (default `0.0.0.0`).
 - `[HTTPS] enabled`, `port`, `ssl_cert`, `ssl_key` — the TLS listener.
 
 If HTTPS is enabled but the certificate or key is missing, startup fails with

@@ -96,9 +96,13 @@ def load_server_config():
     """Ports and TLS material from config.ini; all optional."""
     cfg = configparser.ConfigParser()
     cfg.read("config.ini")
+    # One bind address for both listeners; http_bind is the older spelling.
+    bind = cfg.get("SERVER", "bind",
+                   fallback=cfg.get("SERVER", "http_bind", fallback="0.0.0.0")).strip()
     return {
         "http_enabled": cfg.getboolean("SERVER", "http_enabled", fallback=True),
         "http_port": cfg.getint("SERVER", "http_port", fallback=5000),
+        "bind": bind or "0.0.0.0",
         "https_enabled": cfg.getboolean("HTTPS", "enabled", fallback=False),
         "https_port": cfg.getint("HTTPS", "port", fallback=5443),
         "ssl_cert": cfg.get("HTTPS", "ssl_cert", fallback="").strip(),
@@ -794,6 +798,7 @@ if __name__ == "__main__":
 
     http_port = SERVER_CONFIG["http_port"]
     https_port = SERVER_CONFIG["https_port"]
+    host = SERVER_CONFIG["bind"]
     serve_http = SERVER_CONFIG["http_enabled"] or not ssl_context
 
     if ssl_context and serve_http:
@@ -804,13 +809,16 @@ if __name__ == "__main__":
         # reloader's socket via WERKZEUG_SERVER_FD, which only the HTTPS
         # listener has.
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-            http_server = make_server("127.0.0.1", http_port, app, threaded=True)
+            http_server = make_server(host, http_port, app, threaded=True)
             threading.Thread(target=http_server.serve_forever, daemon=True).start()
-        app.logger.info("Serving HTTP on %s and HTTPS on %s", http_port, https_port)
-        app.run(debug=True, port=https_port, ssl_context=ssl_context,
+        app.logger.info("Serving HTTP on %s:%s and HTTPS on %s:%s",
+                        host, http_port, host, https_port)
+        app.run(debug=True, host=host, port=https_port, ssl_context=ssl_context,
                 extra_files=extra_files)
     else:
         port = int(os.environ.get("FLASK_RUN_PORT") or
                    (https_port if ssl_context else http_port))
-        app.logger.info("Serving %s on port %s", "HTTPS" if ssl_context else "HTTP", port)
-        app.run(debug=True, port=port, ssl_context=ssl_context, extra_files=extra_files)
+        app.logger.info("Serving %s on %s:%s", "HTTPS" if ssl_context else "HTTP",
+                        host, port)
+        app.run(debug=True, host=host, port=port, ssl_context=ssl_context,
+                extra_files=extra_files)

@@ -12,14 +12,13 @@ WorkingDirectory=/opt/rad-ticketing
 # Secrets and settings live here, not in the unit file:
 #   TICKETING_SECRET_KEY, TICKETING_ADMINS, TICKETING_DB,
 #   TICKETING_CATEGORIES_FILE, TICKETING_BOOTSTRAP_ADMIN
+# Ports and the bind address come from /opt/rad-ticketing/config.ini.
 EnvironmentFile=/etc/sysconfig/rad-ticketing
 
 # Schema first, then serve. A migration failure stops the unit rather than
 # leaving the app running against a half-built database.
 ExecStartPre=/opt/rad-ticketing/.venv/bin/python /opt/rad-ticketing/migrate_db.py
-ExecStart=/opt/rad-ticketing/.venv/bin/python -m waitress \
-    --listen=127.0.0.1:${TICKETING_PORT} \
-    app:app
+ExecStart=/opt/rad-ticketing/.venv/bin/python /opt/rad-ticketing/serve.py
 
 Restart=on-failure
 RestartSec=5

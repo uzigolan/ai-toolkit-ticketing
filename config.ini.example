@@ -5,6 +5,12 @@
 ; TLS-terminating proxy.
 http_enabled = true
 http_port = 5000
+; Interface both listeners bind to, HTTP and HTTPS alike. 0.0.0.0 answers on
+; every address of the host, which is what a shared server wants; 127.0.0.1
+; restricts it to the machine itself, for a reverse-proxy setup. An open plain
+; HTTP listener sends logins in the clear, so pair 0.0.0.0 with TLS or a
+; trusted network.
+bind = 0.0.0.0
 
 [HTTPS]
 ; Serve TLS directly, instead of putting nginx/Apache in front. The app refuses

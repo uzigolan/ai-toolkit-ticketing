@@ -99,11 +99,11 @@ Write-Host ''
 try {
     if ($Production) {
         & $venvPython -m pip install --disable-pip-version-check -q waitress
-        $listenPort = if ($Port -gt 0) { $Port } else { 5000 }
         if ($httpsOn) {
             Write-Host 'waitress does not terminate TLS; run app.py directly or put a proxy in front.' -ForegroundColor Yellow
         }
-        & $venvPython -m waitress --listen="127.0.0.1:$listenPort" app:app
+        if ($Port -gt 0) { $env:FLASK_RUN_PORT = "$Port" }
+        & $venvPython serve.py
     }
     else {
         & $venvPython app.py

@@ -114,7 +114,7 @@ Files:
 
 | Section | Keys | Purpose |
 | --- | --- | --- |
-| `[SERVER]` | `http_enabled`, `http_port` | The plain listener |
+| `[SERVER]` | `http_enabled`, `http_port`, `bind` | The plain listener, and the interface both listeners bind to |
 | `[HTTPS]` | `enabled`, `port`, `ssl_cert`, `ssl_key` | TLS terminated by the app itself |
 | `[LDAP]` | `enabled`, `LDAP_HOST`, … | Directory logins |
 
@@ -152,31 +152,103 @@ With `[SERVER] http_enabled = true` as well, one process answers on both ports
 
 **Or terminate in front of it**, which is the better answer for a real
 deployment: leave `[HTTPS] enabled = false` and put nginx or Apache in front,
-as below. The systemd unit runs waitress, which does not terminate TLS, so a
-proxy is the expected setup there.
+as below. The systemd unit runs waitress via `serve.py`, which does not
+terminate TLS, so a proxy is the expected setup there.
 
 ## Run as a Linux service
 
-Tested on RHEL/Rocky and Debian/Ubuntu with systemd.
+Tested on RHEL/Rocky 8+ and Debian/Ubuntu with systemd. The result: waitress
+serving on the address from `config.ini`, a SQLite database built by
+`migrate_db.py`, restarts on failure and starts at boot.
 
-**1. Create a service account and install the code**
+Paths below assume `/opt/rad-ticketing`; change them in the unit file too if
+you pick another.
+
+**1. Prerequisites**
+
+```bash
+# RHEL/Rocky
+sudo dnf install -y python3 python3-pip git sqlite
+# Debian/Ubuntu
+sudo apt install -y python3 python3-venv python3-pip git sqlite3
+```
+
+**2. Create a service account and install the code**
 
 ```bash
 sudo useradd --system --home /opt/rad-ticketing --shell /sbin/nologin radticketing
 sudo mkdir -p /opt/rad-ticketing
-sudo cp -r . /opt/rad-ticketing
+sudo git clone https://github.com/uzigolan/ai-toolkit-ticketing.git /opt/rad-ticketing
 sudo chown -R radticketing:radticketing /opt/rad-ticketing
 ```
 
-**2. Build the virtual environment**
+Copying an existing checkout instead works too — just leave the developer's
+`.venv`, `.secret_key` and `tickets.sqlite` behind:
+
+```bash
+sudo rsync -a --exclude .git --exclude .venv --exclude '*.sqlite' \
+    --exclude .secret_key ./ /opt/rad-ticketing/
+sudo chown -R radticketing:radticketing /opt/rad-ticketing
+```
+
+**3. Build the virtual environment**
 
 ```bash
 sudo -u radticketing python3 -m venv /opt/rad-ticketing/.venv
-sudo -u radticketing /opt/rad-ticketing/.venv/bin/pip install -r /opt/rad-ticketing/requirements.txt
-sudo -u radticketing /opt/rad-ticketing/.venv/bin/pip install waitress
+sudo -u radticketing /opt/rad-ticketing/.venv/bin/pip install \
+    -r /opt/rad-ticketing/requirements.txt
 ```
 
-**3. Write the environment file**
+`waitress` is in `requirements.txt`; the service serves through it.
+
+**4. Write `config.ini`**
+
+Ports, the bind address and LDAP all come from `config.ini` in the install
+root, which `serve.py` reads — no port lives in the unit file or the
+environment.
+
+```bash
+sudo -u radticketing cp /opt/rad-ticketing/config.ini.example /opt/rad-ticketing/config.ini
+sudo -u radticketing vi /opt/rad-ticketing/config.ini
+sudo chmod 600 /opt/rad-ticketing/config.ini
+```
+
+A typical server file:
+
+```ini
+[SERVER]
+http_enabled = true
+http_port = 5000
+bind = 0.0.0.0
+
+[HTTPS]
+enabled = false
+
+[LDAP]
+enabled = true
+LDAP_HOST = ldap.yourcompany.com
+LDAP_PORT = 389
+LDAP_PEOPLE_DN = ou=people,dc=yourcompany,dc=com
+LDAP_BASE_DN = dc=yourcompany,dc=com
+```
+
+`bind = 0.0.0.0` answers on every address of the host, on whichever ports are
+set above; use `127.0.0.1` when a proxy on the same machine fronts it. Open the
+port to match:
+
+```bash
+sudo firewall-cmd --add-port=5000/tcp --permanent && sudo firewall-cmd --reload
+# Debian/Ubuntu with ufw
+sudo ufw allow 5000/tcp
+```
+
+`serve.py` refuses to start with `[HTTPS] enabled = true`, because waitress
+does not terminate TLS — put a proxy in front instead, as in
+[Behind a reverse proxy](#behind-a-reverse-proxy).
+
+**5. Write the environment file**
+
+Secrets and file locations only; everything else is `config.ini`.
 
 ```bash
 sudo tee /etc/sysconfig/rad-ticketing >/dev/null <<EOF
@@ -184,34 +256,86 @@ TICKETING_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(3
 TICKETING_DB=/opt/rad-ticketing/tickets.sqlite
 TICKETING_CATEGORIES_FILE=/opt/rad-ticketing/categories.yml
 TICKETING_ADMINS=uzi
-TICKETING_PORT=5000
+TICKETING_BOOTSTRAP_ADMIN=admin
 EOF
 sudo chmod 600 /etc/sysconfig/rad-ticketing
 sudo chown root:root /etc/sysconfig/rad-ticketing
 ```
 
-On Debian/Ubuntu use `/etc/default/rad-ticketing` and change `EnvironmentFile`
-in the unit accordingly.
+Keep `TICKETING_SECRET_KEY` stable — changing it logs everyone out. On
+Debian/Ubuntu use `/etc/default/rad-ticketing` and point `EnvironmentFile` in
+the unit at it.
 
-**4. Install and start the unit**
+**6. Build the database from scratch**
+
+`migrate_db.py` owns the whole schema, so a fresh install needs nothing but a
+run against a path that doesn't exist yet: it creates the file and applies
+every step in order. Run it **as the service account**, or the database ends up
+owned by root and the service can't write to it.
 
 ```bash
-sudo cp scripts/install/rad-ticketing.service /etc/systemd/system/
+cd /opt/rad-ticketing
+sudo -u radticketing env TICKETING_DB=/opt/rad-ticketing/tickets.sqlite \
+    .venv/bin/python migrate_db.py
+sudo -u radticketing env TICKETING_DB=/opt/rad-ticketing/tickets.sqlite \
+    .venv/bin/python migrate_db.py --status
+sudo chmod 600 /opt/rad-ticketing/tickets.sqlite
+```
+
+`--status` should show every step applied and nothing pending. No admin account
+exists yet — that is created on the first app start, in the next step.
+
+This step is optional, since the unit runs the same migration as
+`ExecStartPre`, but doing it by hand surfaces a schema problem now instead of
+as a failed unit.
+
+**7. Install and start the unit**
+
+```bash
+sudo cp /opt/rad-ticketing/scripts/install/rad-ticketing.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now rad-ticketing
 systemctl status rad-ticketing
-sudo journalctl -u rad-ticketing -f      # the bootstrap password appears here
 ```
 
-The unit runs `migrate_db.py` as `ExecStartPre`, so every start brings the
-schema up to date, and a failed migration stops the unit rather than letting
-the app serve against a half-built database.
+`ExecStartPre` runs `migrate_db.py` on every start, so the schema is always
+current and a failed migration stops the unit rather than letting the app serve
+against a half-built database. `ExecStart` then runs `serve.py`, which reads
+`config.ini`.
+
+**8. First login**
+
+The first start creates the local admin and prints its generated password to
+the journal, once:
+
+```bash
+sudo journalctl -u rad-ticketing | grep 'generated password'
+curl -sI http://127.0.0.1:5000/login          # expect HTTP/1.1 200 OK
+```
+
+Browse to `http://<server>:5000`, log in as `admin`, and change the password at
+`/account/password`.
+
+**Day-to-day**
+
+```bash
+sudo systemctl restart rad-ticketing     # after editing config.ini or categories.yml
+sudo systemctl stop rad-ticketing
+sudo journalctl -u rad-ticketing -f      # follow the log
+sudo journalctl -u rad-ticketing -p err  # errors only
+```
+
+The unit runs with `ProtectSystem=full`, `PrivateTmp` and
+`ReadWritePaths=/opt/rad-ticketing`, so the app can only write inside its own
+directory. If you move `TICKETING_DB` elsewhere, add that path to
+`ReadWritePaths` or the service fails on the first write.
 
 ## Behind a reverse proxy
 
-The service listens on `127.0.0.1` by design — terminate TLS at nginx or Apache
-in front of it. LDAP passwords cross the wire at login, so **do not serve this
-over plain HTTP** beyond localhost.
+The service listens on `[SERVER] bind`, `0.0.0.0` by default. Set it to
+`127.0.0.1` when nginx or Apache terminates TLS on the same host. LDAP
+passwords cross the wire at login, so **do not serve this over plain HTTP**
+beyond localhost or a trusted network.
 
 ```nginx
 server {
@@ -285,6 +409,12 @@ sudo userdel radticketing
 | App exits with `config.ini enables HTTPS but these files are missing` | The paths in `[HTTPS]` are wrong, or the certificate was never generated. Fix the paths or run `scripts/make_self_signed_cert.py`. |
 | The browser warns about the certificate | It's self-signed. Expected for a test pair; use a CA-issued certificate for real use. |
 | `Port 5000 is already in use` | An earlier run is still alive. On Windows: `Get-NetTCPConnection -State Listen -LocalPort 5000`. |
+| Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. `sudo chown radticketing:radticketing /opt/rad-ticketing/tickets.sqlite`. |
+| Unit exits 1 with `serve.py runs waitress, which does not terminate TLS` | `config.ini` has `[HTTPS] enabled = true`. Set it to false and terminate TLS at the proxy. |
+| The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `/opt/rad-ticketing` and `WorkingDirectory` matches. |
+| Unit fails with `status=203/EXEC` | The venv path in the unit is wrong, or `.venv/bin/python` isn't executable by `radticketing`. |
+| Answers on `127.0.0.1` but not from other hosts | `bind = 127.0.0.1`, or the port is closed. Check with `ss -lntp \| grep 5000` and open the firewall. |
+| nginx returns 502 with SELinux enforcing | `sudo setsebool -P httpd_can_network_connect 1`. |
 
 More detail lives in [docs/](docs/README.md): the schema and every migration in
 [docs/database.md](docs/database.md), the login flow in

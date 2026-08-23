@@ -47,6 +47,7 @@ LDAP service-account password and points at private keys.
 | --- | --- | --- |
 | `http_enabled` | `true` | Serve plain HTTP |
 | `http_port` | `5000` | Port for it |
+| `bind` | `0.0.0.0` | Interface both listeners bind to. `0.0.0.0` is every address of the host; `127.0.0.1` is that machine only |
 
 ### `[HTTPS]`
 
