@@ -157,60 +157,59 @@ terminate TLS, so a proxy is the expected setup there.
 
 ## Run as a Linux service
 
-Tested on RHEL/Rocky 8+ and Debian/Ubuntu with systemd. The result: waitress
-serving on the address from `config.ini`, a SQLite database built by
-`migrate_db.py`, restarts on failure and starts at boot.
+Tested on Rocky/RHEL 8+ with systemd. The service runs entirely out of a git
+clone in the `rocky` user's home — its own `.venv`, its own `config.ini`, its
+own database — and never touches the OS python beyond creating that venv. So an
+update is just:
 
-Paths below assume `/opt/rad-ticketing`; change them in the unit file too if
-you pick another.
+```bash
+cd ~/ai-toolkit-ticketing && git pull && sudo systemctl restart rad-ticketing
+```
+
+Paths below assume `/home/rocky/ai-toolkit-ticketing` and the user `rocky`,
+which is what the shipped unit file expects. Using another home or account
+means editing the five paths and the `User=`/`Group=` lines in
+`scripts/install/rad-ticketing.service`.
 
 **1. Prerequisites**
 
 ```bash
-# RHEL/Rocky
 sudo dnf install -y python3 python3-pip git sqlite
-# Debian/Ubuntu
-sudo apt install -y python3 python3-venv python3-pip git sqlite3
 ```
 
-**2. Create a service account and install the code**
+**2. Clone the repo**
+
+As `rocky`, not with sudo — everything must stay owned by the service user.
 
 ```bash
-sudo useradd --system --home /opt/rad-ticketing --shell /sbin/nologin radticketing
-sudo mkdir -p /opt/rad-ticketing
-sudo git clone https://github.com/uzigolan/ai-toolkit-ticketing.git /opt/rad-ticketing
-sudo chown -R radticketing:radticketing /opt/rad-ticketing
+cd ~
+git clone https://github.com/uzigolan/ai-toolkit-ticketing.git
+cd ~/ai-toolkit-ticketing
 ```
 
-Copying an existing checkout instead works too — just leave the developer's
-`.venv`, `.secret_key` and `tickets.sqlite` behind:
+**3. Build the virtual environment inside the clone**
 
 ```bash
-sudo rsync -a --exclude .git --exclude .venv --exclude '*.sqlite' \
-    --exclude .secret_key ./ /opt/rad-ticketing/
-sudo chown -R radticketing:radticketing /opt/rad-ticketing
+python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements.txt
 ```
 
-**3. Build the virtual environment**
-
-```bash
-sudo -u radticketing python3 -m venv /opt/rad-ticketing/.venv
-sudo -u radticketing /opt/rad-ticketing/.venv/bin/pip install \
-    -r /opt/rad-ticketing/requirements.txt
-```
-
-`waitress` is in `requirements.txt`; the service serves through it.
+The unit calls `.venv/bin/python` directly, so this venv — not the system
+interpreter — is what serves the app. `waitress` comes from
+`requirements.txt`, so a `git pull` that bumps a dependency only needs
+`.venv/bin/pip install -r requirements.txt` afterwards.
 
 **4. Write `config.ini`**
 
-Ports, the bind address and LDAP all come from `config.ini` in the install
-root, which `serve.py` reads — no port lives in the unit file or the
-environment.
+Ports, the bind address and LDAP all come from `config.ini` in the clone, which
+`serve.py` reads — no port lives in the unit file or the environment. It is
+git-ignored, so `git pull` never overwrites it.
 
 ```bash
-sudo -u radticketing cp /opt/rad-ticketing/config.ini.example /opt/rad-ticketing/config.ini
-sudo -u radticketing vi /opt/rad-ticketing/config.ini
-sudo chmod 600 /opt/rad-ticketing/config.ini
+cp config.ini.example config.ini
+vi config.ini
+chmod 600 config.ini
 ```
 
 A typical server file:
@@ -238,48 +237,45 @@ port to match:
 
 ```bash
 sudo firewall-cmd --add-port=5000/tcp --permanent && sudo firewall-cmd --reload
-# Debian/Ubuntu with ufw
-sudo ufw allow 5000/tcp
 ```
 
 `serve.py` refuses to start with `[HTTPS] enabled = true`, because waitress
 does not terminate TLS — put a proxy in front instead, as in
 [Behind a reverse proxy](#behind-a-reverse-proxy).
 
-**5. Write the environment file**
+**5. Write `.env` in the clone**
 
-Secrets and file locations only; everything else is `config.ini`.
+Secrets and file locations, read by the unit's `EnvironmentFile`. Also
+git-ignored.
 
 ```bash
-sudo tee /etc/sysconfig/rad-ticketing >/dev/null <<EOF
+cat > ~/ai-toolkit-ticketing/.env <<EOF
 TICKETING_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
-TICKETING_DB=/opt/rad-ticketing/tickets.sqlite
-TICKETING_CATEGORIES_FILE=/opt/rad-ticketing/categories.yml
+TICKETING_DB=/home/rocky/ai-toolkit-ticketing/tickets.sqlite
+TICKETING_CATEGORIES_FILE=/home/rocky/ai-toolkit-ticketing/categories.yml
 TICKETING_ADMINS=uzi
 TICKETING_BOOTSTRAP_ADMIN=admin
 EOF
-sudo chmod 600 /etc/sysconfig/rad-ticketing
-sudo chown root:root /etc/sysconfig/rad-ticketing
+chmod 600 ~/ai-toolkit-ticketing/.env
 ```
 
-Keep `TICKETING_SECRET_KEY` stable — changing it logs everyone out. On
-Debian/Ubuntu use `/etc/default/rad-ticketing` and point `EnvironmentFile` in
-the unit at it.
+systemd parses this file itself, so write plain `KEY=value` lines: no `export`,
+no `$(...)`, no quotes unless the value contains them. Keep
+`TICKETING_SECRET_KEY` stable — changing it logs everyone out.
 
 **6. Build the database from scratch**
 
 `migrate_db.py` owns the whole schema, so a fresh install needs nothing but a
 run against a path that doesn't exist yet: it creates the file and applies
-every step in order. Run it **as the service account**, or the database ends up
-owned by root and the service can't write to it.
+every step in order. Run it as `rocky`, never with sudo, or the database ends
+up owned by root and the service can't write to it.
 
 ```bash
-cd /opt/rad-ticketing
-sudo -u radticketing env TICKETING_DB=/opt/rad-ticketing/tickets.sqlite \
-    .venv/bin/python migrate_db.py
-sudo -u radticketing env TICKETING_DB=/opt/rad-ticketing/tickets.sqlite \
-    .venv/bin/python migrate_db.py --status
-sudo chmod 600 /opt/rad-ticketing/tickets.sqlite
+cd ~/ai-toolkit-ticketing
+set -a; . ./.env; set +a
+.venv/bin/python migrate_db.py
+.venv/bin/python migrate_db.py --status
+chmod 600 tickets.sqlite
 ```
 
 `--status` should show every step applied and nothing pending. No admin account
@@ -291,8 +287,10 @@ as a failed unit.
 
 **7. Install and start the unit**
 
+The unit file is the only thing that leaves the clone.
+
 ```bash
-sudo cp /opt/rad-ticketing/scripts/install/rad-ticketing.service /etc/systemd/system/
+sudo cp ~/ai-toolkit-ticketing/scripts/install/rad-ticketing.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now rad-ticketing
 systemctl status rad-ticketing
@@ -302,6 +300,19 @@ systemctl status rad-ticketing
 current and a failed migration stops the unit rather than letting the app serve
 against a half-built database. `ExecStart` then runs `serve.py`, which reads
 `config.ini`.
+
+If the unit file itself changes in a later `git pull`, copy it over again and
+`sudo systemctl daemon-reload`.
+
+With SELinux enforcing, systemd may refuse to execute an interpreter that lives
+under `/home`. If `systemctl status` shows a permission denial and
+`sudo ausearch -m avc -ts recent` confirms it, label the venv and relabel:
+
+```bash
+sudo dnf install -y policycoreutils-python-utils
+sudo semanage fcontext -a -t bin_t '/home/rocky/ai-toolkit-ticketing/.venv/bin(/.*)?'
+sudo restorecon -Rv /home/rocky/ai-toolkit-ticketing
+```
 
 **8. First login**
 
@@ -325,9 +336,21 @@ sudo journalctl -u rad-ticketing -f      # follow the log
 sudo journalctl -u rad-ticketing -p err  # errors only
 ```
 
+Updating:
+
+```bash
+cd ~/ai-toolkit-ticketing
+git pull
+.venv/bin/pip install -r requirements.txt   # only if requirements.txt changed
+sudo systemctl restart rad-ticketing
+```
+
+`config.ini`, `.env` and `tickets.sqlite` are git-ignored, so a pull leaves them
+alone, and migrations run on restart.
+
 The unit runs with `ProtectSystem=full`, `PrivateTmp` and
-`ReadWritePaths=/opt/rad-ticketing`, so the app can only write inside its own
-directory. If you move `TICKETING_DB` elsewhere, add that path to
+`ReadWritePaths=/home/rocky/ai-toolkit-ticketing`, so the app can only write
+inside the clone. If you move `TICKETING_DB` elsewhere, add that path to
 `ReadWritePaths` or the service fails on the first write.
 
 ## Behind a reverse proxy
@@ -357,19 +380,22 @@ server {
 
 ## Upgrading
 
+The service runs from the clone, so an upgrade is a pull and a restart:
+
 ```bash
-sudo systemctl stop rad-ticketing
-sudo -u radticketing cp /opt/rad-ticketing/tickets.sqlite /var/backups/tickets-$(date +%F).sqlite
-# replace the code, keeping tickets.sqlite, config.ini and categories.yml
-sudo -u radticketing /opt/rad-ticketing/.venv/bin/pip install -r requirements.txt
-sudo systemctl start rad-ticketing
+cd ~/ai-toolkit-ticketing
+cp tickets.sqlite ~/backups/tickets-$(date +%F).sqlite
+git pull
+.venv/bin/pip install -r requirements.txt   # only if requirements.txt changed
+sudo systemctl restart rad-ticketing
 ```
 
-Migrations run on start and are idempotent, so an upgrade that adds no schema
-changes is a no-op. Check what a database has had applied with:
+`config.ini`, `.env` and `tickets.sqlite` are git-ignored, so the pull leaves
+them alone. Migrations run on start and are idempotent, so an upgrade that adds
+no schema changes is a no-op. Check what a database has had applied with:
 
 ```bash
-/opt/rad-ticketing/.venv/bin/python migrate_db.py --status
+cd ~/ai-toolkit-ticketing && .venv/bin/python migrate_db.py --status
 ```
 
 ## Backup and restore
@@ -377,8 +403,9 @@ changes is a no-op. Check what a database has had applied with:
 Everything lives in one SQLite file plus two config files:
 
 ```bash
-sqlite3 /opt/rad-ticketing/tickets.sqlite ".backup '/var/backups/tickets.sqlite'"
-cp /opt/rad-ticketing/{config.ini,categories.yml} /var/backups/
+cd ~/ai-toolkit-ticketing
+sqlite3 tickets.sqlite ".backup '$HOME/backups/tickets.sqlite'"
+cp config.ini categories.yml .env ~/backups/
 ```
 
 Use `.backup` rather than `cp` while the service is running — it takes a
@@ -389,10 +416,9 @@ service, putting the files back and starting it again.
 
 ```bash
 sudo systemctl disable --now rad-ticketing
-sudo rm /etc/systemd/system/rad-ticketing.service /etc/sysconfig/rad-ticketing
+sudo rm /etc/systemd/system/rad-ticketing.service
 sudo systemctl daemon-reload
-sudo rm -rf /opt/rad-ticketing          # this deletes the ticket database
-sudo userdel radticketing
+rm -rf ~/ai-toolkit-ticketing          # this deletes the ticket database
 ```
 
 ## Troubleshooting
@@ -409,10 +435,12 @@ sudo userdel radticketing
 | App exits with `config.ini enables HTTPS but these files are missing` | The paths in `[HTTPS]` are wrong, or the certificate was never generated. Fix the paths or run `scripts/make_self_signed_cert.py`. |
 | The browser warns about the certificate | It's self-signed. Expected for a test pair; use a CA-issued certificate for real use. |
 | `Port 5000 is already in use` | An earlier run is still alive. On Windows: `Get-NetTCPConnection -State Listen -LocalPort 5000`. |
-| Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. `sudo chown radticketing:radticketing /opt/rad-ticketing/tickets.sqlite`. |
+| Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. `sudo chown rocky:rocky ~/ai-toolkit-ticketing/tickets.sqlite`. |
 | Unit exits 1 with `serve.py runs waitress, which does not terminate TLS` | `config.ini` has `[HTTPS] enabled = true`. Set it to false and terminate TLS at the proxy. |
-| The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `/opt/rad-ticketing` and `WorkingDirectory` matches. |
-| Unit fails with `status=203/EXEC` | The venv path in the unit is wrong, or `.venv/bin/python` isn't executable by `radticketing`. |
+| The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `/home/rocky/ai-toolkit-ticketing` and `WorkingDirectory` matches. |
+| Unit fails with `status=203/EXEC` | `.venv` was never built, or was built somewhere other than the clone. Re-run the venv step and check `.venv/bin/python` exists. |
+| Unit fails with `status=200/CHDIR` or permission denied under `/home` | The clone is not at the path in the unit, or `ProtectHome` is back to `yes`. |
+| `.env` values are ignored | systemd needs plain `KEY=value` lines — no `export`, no command substitution. |
 | Answers on `127.0.0.1` but not from other hosts | `bind = 127.0.0.1`, or the port is closed. Check with `ss -lntp \| grep 5000` and open the firewall. |
 | nginx returns 502 with SELinux enforcing | `sudo setsebool -P httpd_can_network_connect 1`. |
 

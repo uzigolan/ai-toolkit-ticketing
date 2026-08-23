@@ -1,24 +1,26 @@
 [Unit]
 Description=RAD AI Ticketing Center
-Documentation=file:///opt/rad-ticketing/README.md
+Documentation=file:///home/rocky/ai-toolkit-ticketing/README.md
 After=network.target
 
 [Service]
 Type=simple
-User=radticketing
-Group=radticketing
-WorkingDirectory=/opt/rad-ticketing
+User=rocky
+Group=rocky
 
-# Secrets and settings live here, not in the unit file:
-#   TICKETING_SECRET_KEY, TICKETING_ADMINS, TICKETING_DB,
-#   TICKETING_CATEGORIES_FILE, TICKETING_BOOTSTRAP_ADMIN
-# Ports and the bind address come from /opt/rad-ticketing/config.ini.
-EnvironmentFile=/etc/sysconfig/rad-ticketing
+# Everything runs out of the git clone: the interpreter is the repo's own
+# .venv, never the OS python, so `git pull && systemctl restart` is the whole
+# update procedure. config.ini is read relative to this directory.
+WorkingDirectory=/home/rocky/ai-toolkit-ticketing
+
+# Secrets and file locations; ports and LDAP live in config.ini.
+# The leading '-' lets the unit start before the file exists.
+EnvironmentFile=-/home/rocky/ai-toolkit-ticketing/.env
 
 # Schema first, then serve. A migration failure stops the unit rather than
 # leaving the app running against a half-built database.
-ExecStartPre=/opt/rad-ticketing/.venv/bin/python /opt/rad-ticketing/migrate_db.py
-ExecStart=/opt/rad-ticketing/.venv/bin/python /opt/rad-ticketing/serve.py
+ExecStartPre=/home/rocky/ai-toolkit-ticketing/.venv/bin/python migrate_db.py
+ExecStart=/home/rocky/ai-toolkit-ticketing/.venv/bin/python serve.py
 
 Restart=on-failure
 RestartSec=5
@@ -26,12 +28,13 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=rad-ticketing
 
-# Harden the process
+# Harden the process. ProtectHome stays off because the install lives under
+# /home; the app can still only write inside its own directory.
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=full
-ProtectHome=yes
-ReadWritePaths=/opt/rad-ticketing
+ProtectHome=no
+ReadWritePaths=/home/rocky/ai-toolkit-ticketing
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 
