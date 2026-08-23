@@ -150,10 +150,10 @@ and names them, rather than quietly falling back to plaintext.
 With `[SERVER] http_enabled = true` as well, one process answers on both ports
 — useful while migrating bookmarks. Set it to `false` to serve TLS only.
 
-**Or terminate in front of it**, which is the better answer for a real
+**Or terminate it in front**, which is still the better answer for a public
 deployment: leave `[HTTPS] enabled = false` and put nginx or Apache in front,
-as below. The systemd unit runs waitress via `serve.py`, which does not
-terminate TLS, so a proxy is the expected setup there.
+as below. The systemd unit serves TLS itself when you enable it, so a proxy is
+optional, not required.
 
 ## Run as a Linux service
 
@@ -197,9 +197,9 @@ python3 -m venv .venv
 ```
 
 The unit calls `.venv/bin/python` directly, so this venv — not the system
-interpreter — is what serves the app. `waitress` comes from
-`requirements.txt`, so a `git pull` that bumps a dependency only needs
-`.venv/bin/pip install -r requirements.txt` afterwards.
+interpreter — is what serves the app. `waitress` (plain HTTP) and `cheroot`
+(TLS) come from `requirements.txt`, so a `git pull` that bumps a dependency
+only needs `.venv/bin/pip install -r requirements.txt` afterwards.
 
 **4. Write `config.ini`**
 
@@ -233,16 +233,36 @@ LDAP_BASE_DN = dc=yourcompany,dc=com
 ```
 
 `bind = 0.0.0.0` answers on every address of the host, on whichever ports are
-set above; use `127.0.0.1` when a proxy on the same machine fronts it. Open the
-port to match:
+set above; use `127.0.0.1` when a proxy on the same machine fronts it. If
+firewalld is running, open the port to match:
 
 ```bash
 sudo firewall-cmd --add-port=5000/tcp --permanent && sudo firewall-cmd --reload
 ```
 
-`serve.py` refuses to start with `[HTTPS] enabled = true`, because waitress
-does not terminate TLS — put a proxy in front instead, as in
-[Behind a reverse proxy](#behind-a-reverse-proxy).
+To have the service terminate TLS itself instead of putting a proxy in front,
+point `[HTTPS]` at a certificate and key and enable it:
+
+```ini
+[HTTPS]
+enabled = true
+port = 444
+ssl_cert = https/tls.cert.pem
+ssl_key = https/tls.key.pem
+```
+
+`serve.py` then serves TLS through cheroot, and plain HTTP through waitress
+alongside it while `[SERVER] http_enabled = true`. A throwaway self-signed pair
+for testing:
+
+```bash
+.venv/bin/python scripts/make_self_signed_cert.py
+```
+
+Ports below 1024 — 444 included — need `CAP_NET_BIND_SERVICE`, which the unit
+already grants; no `setcap` on the interpreter is required. If either file is
+missing, `serve.py` exits 1 and names them rather than quietly serving
+plaintext.
 
 **5. Write `.env` in the clone**
 
@@ -437,7 +457,8 @@ rm -rf ~/ai-toolkit-ticketing          # this deletes the ticket database
 | The browser warns about the certificate | It's self-signed. Expected for a test pair; use a CA-issued certificate for real use. |
 | `Port 5000 is already in use` | An earlier run is still alive. On Windows: `Get-NetTCPConnection -State Listen -LocalPort 5000`. |
 | Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. `sudo chown rocky:rocky ~/ai-toolkit-ticketing/tickets.sqlite`. |
-| Unit exits 1 with `serve.py runs waitress, which does not terminate TLS` | `config.ini` has `[HTTPS] enabled = true`. Set it to false and terminate TLS at the proxy. |
+| Unit exits 1 with `config.ini enables HTTPS but these files are missing` | The `ssl_cert`/`ssl_key` paths in `[HTTPS]` are wrong, or the certificate was never generated. |
+| Unit exits 1 with `TLS needs cheroot` | The venv predates the TLS support. `.venv/bin/pip install -r requirements.txt`. |
 | The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `/home/rocky/ai-toolkit-ticketing` and `WorkingDirectory` matches. |
 | Unit fails with `status=203/EXEC` | `.venv` was never built, or was built somewhere other than the clone. Re-run the venv step and check `.venv/bin/python` exists. |
 | Unit fails with `status=200/CHDIR` or permission denied under `/home` | The clone is not at the path in the unit, or `ProtectHome` is back to `yes`. |
