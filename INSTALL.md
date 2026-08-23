@@ -159,17 +159,18 @@ terminate TLS, so a proxy is the expected setup there.
 
 Tested on Rocky/RHEL 8+ with systemd. The service runs entirely out of a git
 clone in the `rocky` user's home — its own `.venv`, its own `config.ini`, its
-own database — and never touches the OS python beyond creating that venv. So an
-update is just:
-
-```bash
-cd ~/ai-toolkit-ticketing && git pull && sudo systemctl restart rad-ticketing
-```
+own database — and never touches the OS python beyond creating that venv.
+Later updates are then a `git pull` and a restart, as in
+[Upgrading](#upgrading).
 
 Paths below assume `/home/rocky/ai-toolkit-ticketing` and the user `rocky`,
 which is what the shipped unit file expects. Using another home or account
 means editing the five paths and the `User=`/`Group=` lines in
 `scripts/install/rad-ticketing.service`.
+
+Order matters: clone, venv, config, database, and only then install the unit —
+starting the service before the venv and `config.ini` exist just gives you a
+failed unit to debug.
 
 **1. Prerequisites**
 
