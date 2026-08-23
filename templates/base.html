@@ -17,8 +17,11 @@
   {% if session.get('username') %}
   <nav class="app-navbar">
     <a href="{{ url_for('all_tickets') }}" class="navbar-brand">
-      RAD AI
-      <small>Ticketing Center &middot; v{{ app_version }}</small>
+      <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" class="brand-mark">
+      <span class="brand-text">
+        RAD AI
+        <small>Ticketing Center &middot; v{{ app_version }}</small>
+      </span>
     </a>
     <div class="app-nav">
       <a class="nav-link {% if request.endpoint == 'new_ticket' %}active{% endif %}"

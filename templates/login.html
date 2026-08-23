@@ -2,7 +2,10 @@
 {% block title %}Log in{% endblock %}
 {% block container_class %}narrow{% endblock %}
 {% block content %}
-<h1 class="page-title">{{ app_name }}</h1>
+<h1 class="page-title login-title">
+  <img src="{{ url_for('static', filename='favicon.svg') }}" alt="" class="login-mark">
+  {{ app_name }}
+</h1>
 <p class="page-subtitle">
   {% if ldap_enabled %}
     Sign in with your company directory account, or a local account issued by an administrator.
