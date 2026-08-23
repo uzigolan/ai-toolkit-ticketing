@@ -22,6 +22,7 @@ seven Python modules and seven templates.
 
 | Document | What it covers |
 | --- | --- |
+| [user-guide.md](user-guide.md) | The manual for people using the app; [user-guide.html](user-guide.html) is the same thing, standalone and printable |
 | [architecture.md](architecture.md) | Module layout, request flow, why each piece exists |
 | [workflow.md](workflow.md) | Ticket lifecycle, statuses, who may do what |
 | [configuration.md](configuration.md) | `categories.yml` taxonomy and `config.ini` reference |
@@ -34,6 +35,7 @@ behind the design is in [../README.md](../README.md).
 
 ## Where to start
 
+- **Using the app day to day** → [user-guide.md](user-guide.md)
 - **Filing or triaging tickets** → [workflow.md](workflow.md)
 - **Running it for a team** → [../INSTALL.md](../INSTALL.md), then
   [authentication.md](authentication.md)

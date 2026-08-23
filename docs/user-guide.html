@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<!--
+  Standalone user manual: no build step, no CDN, no app running. Open the file
+  in a browser or hand it to someone as an attachment. Keep it in step with
+  docs/user-guide.md, which carries the same content in Markdown.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAD AI Ticketing Center — User Guide</title>
+<style>
+  :root {
+    --bg: #f3f4f7;
+    --bg-accent: #e6eef3;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #5b6b7f;
+    --accent: #0f766e;
+    --accent-2: #1d4ed8;
+    --danger: #b91c1c;
+    --warning: #b45309;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    color: var(--text);
+    background: radial-gradient(circle at 20% 10%, #fff 0%, var(--bg) 35%, var(--bg-accent) 100%);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  header.hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 2rem 2rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  h1, h2, h3 { font-family: "Space Grotesk", "Segoe UI", sans-serif; letter-spacing: -0.02em; }
+  h1 { margin: 0 0 .35rem; font-size: 2rem; }
+  h2 {
+    margin: 2.75rem 0 .75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    font-size: 1.4rem;
+    color: var(--accent);
+  }
+  h3 { margin: 1.75rem 0 .5rem; font-size: 1.1rem; }
+  .lede { color: var(--muted); margin: 0; }
+  nav.toc {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  nav.toc strong { display: block; margin-bottom: .4rem; }
+  nav.toc a { display: inline-block; margin: 0 .9rem .3rem 0; }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; background: var(--surface); }
+  th, td { border: 1px solid var(--border); padding: .55rem .7rem; text-align: left; vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 600; }
+  code {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: .9em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .05rem .3rem;
+  }
+  ol.steps { padding-left: 1.2rem; }
+  ol.steps > li { margin-bottom: .5rem; }
+  .note, .warn {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    border-radius: 0 10px 10px 0;
+    padding: .85rem 1rem;
+    margin: 1.25rem 0;
+  }
+  .warn { border-left-color: var(--warning); }
+  .pill {
+    display: inline-block;
+    font-size: .78rem;
+    font-weight: 600;
+    padding: .1rem .55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  dl.faq dt { font-weight: 600; margin-top: 1rem; }
+  dl.faq dd { margin: .2rem 0 0; color: var(--muted); }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .9rem; }
+  @media print {
+    body { background: #fff; }
+    nav.toc { display: none; }
+    h2 { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>RAD AI Ticketing Center</h1>
+  <p class="lede">User guide — what every screen does, and how to use it.</p>
+</header>
+
+<nav class="toc">
+  <strong>On this page</strong>
+  <a href="#purpose">What this app is for</a>
+  <a href="#signin">Signing in</a>
+  <a href="#around">Getting around</a>
+  <a href="#filing">Filing a ticket</a>
+  <a href="#finding">Finding tickets</a>
+  <a href="#ticket">The ticket page</a>
+  <a href="#verify">Verifying and reopening</a>
+  <a href="#admins">For admins</a>
+  <a href="#users">Managing users</a>
+  <a href="#statuses">Statuses</a>
+  <a href="#permissions">Who can do what</a>
+  <a href="#faq">Questions people ask</a>
+</nav>
+
+<h2 id="purpose">What this app is for</h2>
+<p>You asked a RAD AI toolkit something and the answer was wrong, slow, or made
+up. This is where you report it, in a form structured enough that someone can
+act on it.</p>
+<ol class="steps">
+  <li><strong>You file a ticket</strong> with the exact prompt you used and the chat that came back.</li>
+  <li><strong>An admin triages it</strong>, fixes the toolkit, and hands the ticket back with the corrected answer and the build carrying the fix.</li>
+  <li><strong>You verify</strong> — you, not the admin. A “fixed” nobody confirmed is a claim, not a fix.</li>
+  <li><strong>The confirmed ticket becomes a regression test</strong>, so the same bad answer can’t come back unnoticed.</li>
+</ol>
+<div class="note">That is the whole point of the extra fields. A ticket with a
+prompt and an expected answer can be turned into a test case. A ticket that says
+“the bot is wrong” cannot.</div>
+
+<h2 id="signin">Signing in</h2>
+<p>Go to the URL your administrator gave you and sign in at <code>/login</code>.
+Two kinds of account, and the login form is the same for both:</p>
+<ul>
+  <li><strong>Company directory (LDAP)</strong> — your normal work username and password. Your account is created automatically on the first successful sign-in.</li>
+  <li><strong>Local account</strong> — created for you by an admin, with a password only this app knows.</li>
+</ul>
+<p>Change a local password from the account menu → <strong>Change password</strong>
+(<code>/account/password</code>). Directory passwords are managed by your company’s
+normal process, not here.</p>
+<div class="note">A failed login always says “Invalid username or password”. It
+never reveals whether an account exists, so repeated failures need an admin to
+check the server log.</div>
+
+<h2 id="around">Getting around</h2>
+<table>
+  <tr><th>Page</th><th>Path</th><th>What it’s for</th></tr>
+  <tr><td>New ticket</td><td><code>/tickets/new</code></td><td>File a report. The landing page after login</td></tr>
+  <tr><td>My tickets</td><td><code>/tickets/mine</code></td><td>Everything you submitted, and what state it’s in</td></tr>
+  <tr><td>All tickets</td><td><code>/tickets</code></td><td>Everything anyone reported</td></tr>
+  <tr><td>Ticket</td><td><code>/tickets/&lt;id&gt;</code></td><td>One ticket: the report, the outcome, the conversation</td></tr>
+  <tr><td>Triage queue</td><td><code>/admin</code></td><td><span class="pill">admin</span> every ticket with the admin actions</td></tr>
+  <tr><td>Users</td><td><code>/admin/users</code></td><td><span class="pill">admin</span> accounts and roles</td></tr>
+  <tr><td>Change password</td><td><code>/account/password</code></td><td>Local accounts only</td></tr>
+</table>
+<p>Everyone who can log in can read every ticket. That’s intentional: seeing
+what is already reported is what stops the same issue being filed five times.</p>
+
+<h2 id="filing">Filing a ticket</h2>
+<p><code>/tickets/new</code>. The form is ordered so the useful part comes first.</p>
+<ol class="steps">
+  <li><strong>Which toolkit</strong> — preselected to the default. Everything follows from it: who triages, which repo the eventual test case belongs in, and which tickets yours could duplicate.</li>
+  <li><strong>What went wrong</strong> — tick as many as apply. A slow answer that also needed three retries and still came back wrong is <em>one</em> ticket with three boxes ticked.</li>
+  <li><strong>Your prompt</strong> — the exact text you sent, on its own. The most valuable field: an admin re-runs it against the fixed build and pastes back what it says now.</li>
+  <li><strong>The pasted chat</strong> — the whole conversation, warts and all. Long is fine.</li>
+  <li><strong>Facets</strong> — knowledge scope, knowledge sources, operations, RAD families. Optional, multi-select, and they don’t affect duplicate detection, so don’t agonise over them.</li>
+</ol>
+<p><strong>Advanced details</strong> is collapsed on purpose — title, description,
+expected vs. actual behaviour, severity, toolkit version, suggestion. Fill in
+what you know; a report that arrives beats a perfect report nobody writes.</p>
+<p>Rules the form enforces:</p>
+<ul>
+  <li>At least <strong>one</strong> of prompt, pasted chat or description. An empty ticket is rejected, not stored.</li>
+  <li>No title? One is derived from the first substantial line of your prompt, then the chat, then the description.</li>
+  <li>Every selected option must exist in the current vocabulary, so a stale bookmarked form can’t inject unknown values.</li>
+</ul>
+
+<h3>Duplicates</h3>
+<p>On submission the app hashes a normalised form of your toolkit, categories,
+prompt, title and description — numbers, hex values and whitespace flattened —
+so near-identical reports collapse together. If an open ticket already matches,
+yours is filed as <span class="pill">duplicate</span> and linked to the original.</p>
+<div class="note">A duplicate is not a rejection. Follow the link, read what’s
+already known, and add a follow-up there. The same question asked of two
+different toolkits is two problems, not a duplicate.</div>
+
+<h2 id="finding">Finding tickets</h2>
+<p>Both list pages and the admin queue share the same controls:</p>
+<ul>
+  <li><strong>Search</strong> — free text across the ticket content.</li>
+  <li><strong>Status filter</strong> — narrow to new, triaged, awaiting verification, and so on.</li>
+  <li><strong>Toolkit filter</strong> — one toolkit at a time.</li>
+  <li><strong>Sort</strong> — click a column heading, click again to flip direction. Severity sorts by real severity order, not alphabetically.</li>
+  <li><strong>Page size</strong> — 25 by default.</li>
+</ul>
+<p>The filters live in the URL, so a filtered view is a link you can paste to a
+colleague.</p>
+
+<h2 id="ticket">The ticket page</h2>
+<p><code>/tickets/&lt;id&gt;</code> shows the report as filed, the facets, the current
+status, and the outcome once there is one: the resolution, the note, the build
+carrying the fix, and the corrected answer. The submitter’s original prompt has
+a <strong>copy button</strong> next to it — that’s the intended way to re-run it.</p>
+<p><strong>Follow-ups</strong> are the conversation at the bottom. Anyone logged in
+can read them; adding is narrower:</p>
+<ul>
+  <li>The <strong>submitter</strong> can add follow-ups until the ticket is verified.</li>
+  <li><strong>Admins</strong> can always add. A comment from an admin who isn’t the submitter is flagged as an admin note.</li>
+</ul>
+<p><strong>Editing</strong> (submitter or admin) reopens the same form used to file
+it. Only content and facets can change — status, resolution and ownership
+cannot, so nobody can promote their own ticket to “fixed” through the edit form.
+Editing recomputes the duplicate signature.</p>
+<p><strong>Deleting</strong> removes the ticket and its comments, and unlinks any
+ticket that pointed at it as a duplicate.</p>
+
+<h2 id="verify">Verifying and reopening</h2>
+<p>When an admin hands a ticket back it sits in
+<span class="pill">ready for verification</span> (they believe it’s fixed) or
+<span class="pill">known issue</span> (real, but not being fixed now). It waits
+for <em>you</em>, the submitter.</p>
+<ul>
+  <li><strong>Verify</strong> — you agree. The ticket becomes <code>verified</code>, the end state, and stops taking follow-ups from you.</li>
+  <li><strong>Reopen</strong> — it isn’t actually fixed. Back to <code>triaged</code>, and the entire outcome is cleared: resolution, note, fixed-in versions, corrected answer, resolver, verifier.</li>
+</ul>
+<div class="warn">Admins <strong>cannot</strong> verify a ticket — only the submitter
+can. An admin closing their own triage item is exactly the rubber-stamping this
+workflow exists to prevent. Admins can reopen, including a verified ticket.</div>
+
+<h2 id="admins">For admins</h2>
+<p>The triage queue at <code>/admin</code> lists every ticket with the admin actions
+on each. From there or from a ticket page:</p>
+<p><strong>Mark triaged</strong> — a plain acknowledgement that someone picked it up.</p>
+<p><strong>Resolve</strong> — choose an outcome and hand the ticket back. The form
+refuses incomplete work:</p>
+<table>
+  <tr><th>Outcome</th><th>What you must supply</th></tr>
+  <tr><td>Fixed</td><td>The <code>rad agent show versions</code> output of the build carrying the fix, <strong>and</strong> the corrected answer from re-running the submitter’s prompt on that build</td></tr>
+  <tr><td>Known issue</td><td>A note explaining the decision</td></tr>
+</table>
+<p>The exact list of outcomes comes from <code>categories.yml</code>, so your install
+may offer more.</p>
+<div class="note">The rhythm: copy the submitter’s prompt with the copy button,
+run it against the fixed build, paste what it says now into <em>corrected
+answer</em>. That pair — prompt and expected answer — is what makes the ticket
+exportable as a test.</div>
+<p>Resolving records who resolved it and when, and clears any previous
+verification. It never closes the ticket; the submitter decides that.</p>
+<p><strong>Promote to eval case</strong> — exports the ticket as a JSON stub into
+<code>exports/</code>, shaped for the toolkit’s <code>tests/evals/cases/</code>. Copy it
+into the toolkit repo. Promotion can happen at any point and does
+<strong>not</strong> change the ticket’s status.</p>
+
+<h2 id="users">Managing users</h2>
+<p><code>/admin/users</code>, admins only.</p>
+<ul>
+  <li><strong>Create a local account</strong> — username, password (8 characters minimum), role, optionally email and display name. Directory users don’t need this; they are created on first successful login.</li>
+  <li><strong>Change a role</strong> between user and admin.</li>
+  <li><strong>Disable / enable</strong> an account. A disabled user is refused at login with a clear message.</li>
+  <li><strong>Reset a password</strong> (local accounts).</li>
+  <li><strong>Delete</strong> an account.</li>
+</ul>
+<div class="warn">Two guard rails you can’t override from the UI: you cannot
+change your own role or status, and you cannot demote, disable or delete the
+<strong>last active admin</strong>. Promote someone else first.</div>
+<p>Usernames listed in the <code>TICKETING_ADMINS</code> setting become admins the
+first time they are seen, so a named person’s first directory login arrives with
+the right role.</p>
+
+<h2 id="statuses">Statuses at a glance</h2>
+<table>
+  <tr><th>Status</th><th>Meaning</th><th>Set by</th></tr>
+  <tr><td><code>new</code></td><td>Filed, nobody has looked yet</td><td>Submission</td></tr>
+  <tr><td><code>duplicate</code></td><td>Same signature as an earlier open ticket</td><td>Automatic on submission</td></tr>
+  <tr><td><code>triaged</code></td><td>An admin has picked it up</td><td>Admin</td></tr>
+  <tr><td><code>ready_for_verification</code></td><td>Fixed; waiting on the submitter to confirm</td><td>Admin, outcome “fixed”</td></tr>
+  <tr><td><code>known_issue</code></td><td>Real, but not being fixed for now</td><td>Admin, outcome “known issue”</td></tr>
+  <tr><td><code>verified</code></td><td>The submitter confirmed. End state</td><td>Submitter</td></tr>
+</table>
+
+<h2 id="permissions">Who can do what</h2>
+<table>
+  <tr><th>Action</th><th>Anyone logged in</th><th>Submitter</th><th>Admin</th></tr>
+  <tr><td>Read any ticket</td><td>yes</td><td>yes</td><td>yes</td></tr>
+  <tr><td>File a ticket</td><td>yes</td><td>—</td><td>yes</td></tr>
+  <tr><td>Add a follow-up</td><td>no</td><td>until verified</td><td>always</td></tr>
+  <tr><td>Edit / delete a ticket</td><td>no</td><td>yes</td><td>yes</td></tr>
+  <tr><td>Mark triaged</td><td>no</td><td>no</td><td>yes</td></tr>
+  <tr><td>Resolve (hand back)</td><td>no</td><td>no</td><td>yes</td></tr>
+  <tr><td>Verify (close)</td><td>no</td><td>yes</td><td><strong>no</strong></td></tr>
+  <tr><td>Reopen</td><td>no</td><td>yes</td><td>yes</td></tr>
+  <tr><td>Promote to eval case</td><td>no</td><td>no</td><td>yes</td></tr>
+  <tr><td>Manage users</td><td>no</td><td>no</td><td>yes</td></tr>
+</table>
+<p>These are enforced server-side, not just by hiding buttons.</p>
+
+<h2 id="faq">Questions people ask</h2>
+<dl class="faq">
+  <dt>My ticket was marked duplicate. Was it ignored?</dt>
+  <dd>No. It’s linked to the original, which someone is already working. Add anything new as a follow-up there.</dd>
+
+  <dt>I don’t have the original prompt any more.</dt>
+  <dd>File it anyway with the chat and a description. It just can’t become a test case until someone can reproduce it.</dd>
+
+  <dt>Can I file on behalf of someone else?</dt>
+  <dd>You can, but you become the submitter — and the submitter is who has to verify the fix. Better to have them file it.</dd>
+
+  <dt>An admin marked it fixed but it isn’t.</dt>
+  <dd>Reopen it. That clears the outcome entirely and puts it back in the queue.</dd>
+
+  <dt>Why can’t I comment any more?</dt>
+  <dd>The ticket is verified, which is the end state. Ask an admin to reopen it if something new turned up.</dd>
+
+  <dt>Why does the form keep rejecting my submission?</dt>
+  <dd>It needs at least one of prompt, pasted chat or description, and every selected option must be a current one. The red message names the problem.</dd>
+
+  <dt>Where did my exported eval case go?</dt>
+  <dd><code>exports/</code> in the install directory, named after the ticket. The flash message after promoting names the exact path.</dd>
+</dl>
+
+<footer>
+  RAD AI Ticketing Center — user guide. The same content in Markdown is in
+  <a href="user-guide.md">docs/user-guide.md</a>; installing and running is in
+  <a href="../INSTALL.md">INSTALL.md</a>.
+</footer>
+
+</div>
+</body>
+</html>
