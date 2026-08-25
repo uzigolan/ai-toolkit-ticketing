@@ -105,8 +105,37 @@ CHAT
 
 <div class="content-card">
   <dl class="detail-grid">
+    <dt>Track</dt>
+    <dd><span class="facet-pill facet-source">{{ track_label(ticket.ticket_track) }}</span></dd>
     <dt>Toolkit</dt>
     <dd><span class="facet-pill facet-toolkit">{{ toolkit_label(ticket.toolkit) }}</span></dd>
+    {% if ticket.ticket_track == 'self_hosted' %}
+      {% if ticket.self_hosted_area %}
+        <dt>POC area</dt><dd><span class="facet-pill facet-op-design">{{ self_hosted_area_label(ticket.self_hosted_area) }}</span></dd>
+      {% endif %}
+      {% if ticket.self_hosted_metric %}
+        <dt>Score / measurement</dt><dd><span class="facet-pill facet-source">{{ self_hosted_metric_label(ticket.self_hosted_metric) }}</span></dd>
+      {% endif %}
+      {% if ticket.self_hosted_result %}
+        <dt>Result classification</dt><dd>{{ self_hosted_result_label(ticket.self_hosted_result) }}</dd>
+      {% endif %}
+      {% if ticket.self_hosted_score or ticket.self_hosted_target %}
+        <dt>Score vs target</dt>
+        <dd>
+          {% if ticket.self_hosted_score %}<div><strong>Measured:</strong> {{ ticket.self_hosted_score }}</div>{% endif %}
+          {% if ticket.self_hosted_target %}<div><strong>Target:</strong> {{ ticket.self_hosted_target }}</div>{% endif %}
+        </dd>
+      {% endif %}
+      {% if ticket.self_hosted_measurement %}
+        <dt>Measurement details</dt><dd><pre>{{ ticket.self_hosted_measurement }}</pre></dd>
+      {% endif %}
+      {% if ticket.self_hosted_evidence %}
+        <dt>Evidence / links</dt><dd><pre>{{ ticket.self_hosted_evidence }}</pre></dd>
+      {% endif %}
+      {% if ticket.self_hosted_doc_ref %}
+        <dt>Document reference</dt><dd>{{ ticket.self_hosted_doc_ref }}</dd>
+      {% endif %}
+    {% endif %}
     <dt>What went wrong</dt>
     <dd>
       {% for c in as_ids(ticket.categories) %}
@@ -271,7 +300,7 @@ CHAT
           which version to move to, and pins the fix to something verifiable.
         </span>
         <textarea class="form-control mono" id="fixed_in_versions" name="fixed_in_versions"
-                  rows="4" placeholder="rad agent show versions"></textarea>
+                  rows="4" placeholder="rad agent show system versions"></textarea>
       </div>
       <div class="form-field" id="fixed-answer-field">
         {% if ticket.prompt %}

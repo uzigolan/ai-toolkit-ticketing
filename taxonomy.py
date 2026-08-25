@@ -22,6 +22,7 @@ BUILTIN = {
         ("radview-ai-toolkit", "radview-ai-toolkit"),
         ("pikachu-ai-toolkit", "pikachu-ai-toolkit"),
         ("synergy-ccm-mcp", "synergy-ccm-mcp"),
+        ("self-hosted-ai-poc", "self-hosted-ai-poc"),
         ("other", "Something else / not listed yet"),
     ],
     "default_toolkit": "rad-agent-toolkit",
@@ -47,6 +48,34 @@ BUILTIN = {
         ("design", "Architecture / design / planning"),
         ("device_read", "Device read (show / get info)"),
         ("device_write", "Device change (set / stage / commit)"),
+    ],
+    "self_hosted_areas": [
+        ("chip_design_ai", "Chip-Design AI Applications"),
+        ("coding_assistance", "AI Coding Assistance"),
+        ("radchat_rag_cli", "RADChat / RAG / Local CLI Generation"),
+        ("sdlc_workflows", "SDLC Workflows"),
+        ("cost_value", "Cost and Value Benchmark"),
+        ("performance", "Performance Benchmark"),
+        ("security", "Security Gate"),
+        ("final_scorecard", "Final Scorecard"),
+    ],
+    "self_hosted_metrics": [
+        ("engineering_quality_score", "Engineering Quality Score"),
+        ("weighted_capability_coverage", "Weighted Capability Coverage"),
+        ("model_tool_efficiency", "Model and Tool Efficiency Metrics"),
+        ("coding_assistance_score", "Coding Assistance Score"),
+        ("sdlc_score", "SDLC Score"),
+        ("cost_comparison", "Cost Comparison"),
+        ("performance_measurement", "Performance Measurement"),
+        ("security_gate_check", "Security Gate Check"),
+        ("final_score", "Final Score"),
+    ],
+    "self_hosted_results": [
+        ("full_pass", "Full pass"),
+        ("pass_minor", "Pass with minor correction"),
+        ("partial", "Partial result"),
+        ("failure", "Failure"),
+        ("critical_failure", "Critical or unsafe failure"),
     ],
     "severities": [("low", "Low"), ("normal", "Normal"), ("high", "High — blocking my work")],
     "resolutions": [
@@ -160,6 +189,9 @@ def load(path: str = None, logger=None) -> dict:
     operations = _entries(data.get("operations"), "operations", path)
     toolkits = _entries(data.get("toolkits"), "toolkits", path)
     scope = _flagged(data.get("knowledge_scope"), "knowledge_scope", path, ("default",))
+    self_hosted_areas = _entries(data.get("self_hosted_areas"), "self_hosted_areas", path)
+    self_hosted_metrics = _entries(data.get("self_hosted_metrics"), "self_hosted_metrics", path)
+    self_hosted_results = _entries(data.get("self_hosted_results"), "self_hosted_results", path)
 
     # The toolkit the form starts on; falls back to the first one listed.
     default_toolkit = next(
@@ -178,6 +210,9 @@ def load(path: str = None, logger=None) -> dict:
         "knowledge_sources": sources or list(BUILTIN["knowledge_sources"]),
         "knowledge_scope": scope or [dict(s) for s in BUILTIN["knowledge_scope"]],
         "operations": operations or list(BUILTIN["operations"]),
+        "self_hosted_areas": self_hosted_areas or list(BUILTIN["self_hosted_areas"]),
+        "self_hosted_metrics": self_hosted_metrics or list(BUILTIN["self_hosted_metrics"]),
+        "self_hosted_results": self_hosted_results or list(BUILTIN["self_hosted_results"]),
     }
     if logger:
         logger.info(

@@ -8,3 +8,6 @@ config.ini
 .secret_key
 tickets.sqlite
 exports/*.json
+
+# Office docs
+*.doc*

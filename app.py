@@ -60,6 +60,17 @@ DEFAULT_SCOPE = [s["id"] for s in KNOWLEDGE_SCOPE if s["default"]]
 OPERATIONS = TAXONOMY["operations"]
 SOURCE_LABELS = dict(KNOWLEDGE_SOURCES)
 OPERATION_LABELS = dict(OPERATIONS)
+SELF_HOSTED_AREAS = TAXONOMY.get("self_hosted_areas", [])
+SELF_HOSTED_METRICS = TAXONOMY.get("self_hosted_metrics", [])
+SELF_HOSTED_RESULTS = TAXONOMY.get("self_hosted_results", [])
+SELF_HOSTED_AREA_LABELS = dict(SELF_HOSTED_AREAS)
+SELF_HOSTED_METRIC_LABELS = dict(SELF_HOSTED_METRICS)
+SELF_HOSTED_RESULT_LABELS = dict(SELF_HOSTED_RESULTS)
+TICKET_TRACKS = (("toolkit", "Toolkit ticketing"), ("self_hosted", "Self-hosted ticketing"))
+TRACK_LABELS = dict(TICKET_TRACKS)
+SELF_HOSTED_TOOLKIT = "self-hosted-ai-poc"
+if DEFAULT_TOOLKIT == SELF_HOSTED_TOOLKIT:
+    DEFAULT_TOOLKIT = next((t[0] for t in TOOLKITS if t[0] != SELF_HOSTED_TOOLKIT), DEFAULT_TOOLKIT)
 SEVERITIES = TAXONOMY["severities"]
 SEVERITY_IDS = [s[0] for s in SEVERITIES]
 RESOLUTIONS = TAXONOMY["resolutions"]
@@ -176,6 +187,10 @@ def inject_auth_context():
         "source_label": lambda s: SOURCE_LABELS.get(s, s),
         "scope_label": lambda s: SCOPE_LABELS.get(s, s),
         "operation_label": lambda o: OPERATION_LABELS.get(o, o),
+        "track_label": lambda t: TRACK_LABELS.get(t or "toolkit", t or "toolkit"),
+        "self_hosted_area_label": lambda a: SELF_HOSTED_AREA_LABELS.get(a, a or ""),
+        "self_hosted_metric_label": lambda m: SELF_HOSTED_METRIC_LABELS.get(m, m or ""),
+        "self_hosted_result_label": lambda r: SELF_HOSTED_RESULT_LABELS.get(r, r or ""),
         "as_ids": lambda csv: [v for v in (csv or "").split(",") if v],
     }
 
@@ -367,28 +382,71 @@ def _checked_ids(field: str, allowed: dict) -> str:
 
 def _ticket_form_data() -> dict:
     """Validated ticket fields from the submit/edit form."""
+    track = request.form.get("ticket_track", "toolkit").strip()
+    if track not in TRACK_LABELS:
+        track = "toolkit"
     severity = request.form.get("severity", "")
     if severity not in SEVERITY_IDS:
         severity = DEFAULT_SEVERITY
     transcript = request.form.get("transcript", "").strip()
     prompt = request.form.get("prompt", "").strip()
+    self_measurement = request.form.get("self_hosted_measurement", "").strip()
+    title = _derive_title(prompt, transcript, self_measurement)
+    if track == "self_hosted" and title == "Untitled report":
+        area = SELF_HOSTED_AREA_LABELS.get(request.form.get("self_hosted_area", ""), "Self-hosted")
+        metric = SELF_HOSTED_METRIC_LABELS.get(request.form.get("self_hosted_metric", ""), "assessment")
+        title = f"{area} - {metric}"
+
+    if track == "self_hosted":
+        description_parts = [
+            self_measurement,
+            request.form.get("self_hosted_evidence", "").strip(),
+            transcript,
+            prompt,
+        ]
+        description = "\n\n".join(part for part in description_parts if part)
+    else:
+        description = transcript or prompt
+
     return {
-        "toolkit": request.form.get("toolkit", ""),
-        "categories": _checked_ids("categories", CATEGORY_LABELS),
+        "ticket_track": track,
+        "toolkit": SELF_HOSTED_TOOLKIT if track == "self_hosted" else request.form.get("toolkit", ""),
+        "categories": _checked_ids("categories", CATEGORY_LABELS) if track == "toolkit" else "",
         "knowledge_sources": _checked_ids("knowledge_sources", SOURCE_LABELS),
         "knowledge_scope": _checked_ids("knowledge_scope", SCOPE_LABELS),
         "operations": _checked_ids("operations", OPERATION_LABELS),
-        "title": _derive_title(prompt, transcript, ""),
-        "description": transcript or prompt,
+        "title": title,
+        "description": description,
         "prompt": prompt,
         "transcript": transcript,
         "suggestion": request.form.get("suggestion", "").strip(),
         "toolkit_version": request.form.get("toolkit_version", "").strip(),
         "severity": severity,
+        "self_hosted_area": request.form.get("self_hosted_area", "").strip(),
+        "self_hosted_metric": request.form.get("self_hosted_metric", "").strip(),
+        "self_hosted_result": request.form.get("self_hosted_result", "").strip(),
+        "self_hosted_score": request.form.get("self_hosted_score", "").strip(),
+        "self_hosted_target": request.form.get("self_hosted_target", "").strip(),
+        "self_hosted_measurement": self_measurement,
+        "self_hosted_evidence": request.form.get("self_hosted_evidence", "").strip(),
+        "self_hosted_doc_ref": request.form.get("self_hosted_doc_ref", "").strip(),
     }
 
 
 def _ticket_form_error(data: dict) -> str:
+    if data["ticket_track"] == "self_hosted":
+        if data["self_hosted_area"] not in SELF_HOSTED_AREA_LABELS:
+            return "Choose the self-hosted POC area being measured."
+        if data["self_hosted_metric"] not in SELF_HOSTED_METRIC_LABELS:
+            return "Choose which score/measurement this report is about."
+        if data["self_hosted_result"] and data["self_hosted_result"] not in SELF_HOSTED_RESULT_LABELS:
+            return "Choose a valid self-hosted result classification."
+        if not data["self_hosted_measurement"]:
+            return "Add the measurement details for this self-hosted report."
+        if not data["description"]:
+            return "Add measurement evidence, links, or notes before submitting."
+        return ""
+
     if data["toolkit"] not in TOOLKIT_LABELS:
         return "Choose which toolkit this ticket is about."
     if not data["categories"]:
@@ -407,6 +465,11 @@ def _render_ticket_form(form, action_url, submit_label, heading, subtitle, ticke
         knowledge_scope=KNOWLEDGE_SCOPE,
         default_scope=DEFAULT_SCOPE,
         operations=OPERATIONS,
+        ticket_tracks=TICKET_TRACKS,
+        self_hosted_areas=SELF_HOSTED_AREAS,
+        self_hosted_metrics=SELF_HOSTED_METRICS,
+        self_hosted_results=SELF_HOSTED_RESULTS,
+        self_hosted_toolkit=SELF_HOSTED_TOOLKIT,
         default_severity=DEFAULT_SEVERITY,
         form=form,
         action_url=action_url,
@@ -418,7 +481,7 @@ def _render_ticket_form(form, action_url, submit_label, heading, subtitle, ticke
 
 
 NEW_TICKET_SUBTITLE = ("Pick the toolkit, tick what went wrong, paste the whole chat, "
-                       "submit. Everything else helps triage but is optional.")
+                       "submit. For self-hosted POC reports, switch track and fill score/measurement fields.")
 
 
 @app.route("/tickets/new", methods=["GET", "POST"])
@@ -478,8 +541,13 @@ def edit_ticket(ticket_id):
     else:
         form = MultiDict()
         for field in ("toolkit", "prompt", "transcript", "suggestion",
-                      "toolkit_version", "severity"):
+                      "toolkit_version", "severity", "ticket_track", "self_hosted_area",
+                      "self_hosted_metric", "self_hosted_result", "self_hosted_score",
+                      "self_hosted_target", "self_hosted_measurement", "self_hosted_evidence",
+                      "self_hosted_doc_ref"):
             form[field] = ticket[field] or ""
+        if not form["ticket_track"]:
+            form["ticket_track"] = "toolkit"
         for field in ("categories", "knowledge_sources", "knowledge_scope", "operations"):
             for value in (ticket[field] or "").split(","):
                 if value:
@@ -646,7 +714,7 @@ def ticket_detail(ticket_id):
                     flash("Choose an outcome before handing the ticket back.", "error")
                 elif resolution in RESOLUTIONS_NEEDING_VERSION and not fixed_in:
                     flash(
-                        f"'{label}' needs the `rad agent show versions` output of the "
+                        f"'{label}' needs the `rad agent show system versions` output of the "
                         f"build that carries the fix.",
                         "error",
                     )

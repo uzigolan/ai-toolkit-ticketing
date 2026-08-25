@@ -25,6 +25,8 @@ toolkits:
     label: pikachu-ai-toolkit
   - id: synergy-ccm-mcp
     label: synergy-ccm-mcp
+  - id: self-hosted-ai-poc
+    label: self-hosted-ai-poc
   - id: other
     label: Something else / not listed yet
 
@@ -81,6 +83,10 @@ knowledge_sources:
     label: Agent skills & instructions
   - id: vendor
     label: Vendor docs (Altera / FPGA)
+  - id: catalog
+    label: Catalog / ordering
+  - id: netconf
+    label: NETCONF / YANG models
 
 # What the agent was actually doing. Also a combination: a question that ends in
 # a config change touches all three, and the risk grows down the list.
@@ -94,6 +100,58 @@ operations:
   - id: device_write
     label: Device change (set / stage / commit)
 
+# Self-hosted POC areas from "Self-Hosted AI POC v1.02". Used only when the
+# submitter selects the self-hosted ticketing track on the form.
+self_hosted_areas:
+  - id: chip_design_ai
+    label: Chip-Design AI Applications
+  - id: coding_assistance
+    label: AI Coding Assistance
+  - id: radchat_rag_cli
+    label: RADChat / RAG / Local CLI Generation
+  - id: sdlc_workflows
+    label: SDLC Workflows
+  - id: cost_value
+    label: Cost and Value Benchmark
+  - id: performance
+    label: Performance Benchmark
+  - id: security
+    label: Security Gate
+  - id: final_scorecard
+    label: Final Scorecard
+
+self_hosted_metrics:
+  - id: engineering_quality_score
+    label: Engineering Quality Score
+  - id: weighted_capability_coverage
+    label: Weighted Capability Coverage
+  - id: model_tool_efficiency
+    label: Model and Tool Efficiency Metrics
+  - id: coding_assistance_score
+    label: Coding Assistance Score
+  - id: sdlc_score
+    label: SDLC Score
+  - id: cost_comparison
+    label: Cost Comparison
+  - id: performance_measurement
+    label: Performance Measurement
+  - id: security_gate_check
+    label: Security Gate Check
+  - id: final_score
+    label: Final Score
+
+self_hosted_results:
+  - id: full_pass
+    label: Full pass
+  - id: pass_minor
+    label: Pass with minor correction
+  - id: partial
+    label: Partial result
+  - id: failure
+    label: Failure
+  - id: critical_failure
+    label: Critical or unsafe failure
+
 severities:
   - id: low
     label: Low
@@ -105,7 +163,7 @@ severities:
 # What an admin can do with a finished ticket. Admins never close: they hand the
 # ticket back to whoever filed it, and only that person can close it as verified.
 #   status:           the state the ticket moves into.
-#   requires_version: demands the `rad agent show versions` output of the build
+#   requires_version: demands the `rad agent show system versions` output of the build
 #                     that carries the fix.
 #   requires_answer:  demands the corrected answer, produced by re-running the
 #                     submitter's original prompt against that build.

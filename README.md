@@ -106,7 +106,7 @@ Installing and running: [INSTALL.md](INSTALL.md). Everything else is in
 - **Closing states an outcome, and only the submitter can close**: an admin
   can't close a ticket at all — they pick a resolution (`fixed` /
   `known_issue`, configurable in `categories.yml`) and hand the ticket back. An
-  outcome marked `requires_version: true` demands the `rad agent show versions`
+  outcome marked `requires_version: true` demands the `rad agent show system versions`
   output of the build carrying the fix; `requires_answer: true` demands the
   corrected answer from re-running the prompt on it. Then the person who filed
   it decides: verify, and the ticket is settled, or reopen. That's the point:

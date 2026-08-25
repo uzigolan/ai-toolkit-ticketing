@@ -123,7 +123,7 @@ From `/admin` or the ticket page, an admin can:
 
   | Outcome flag | What it demands |
   | --- | --- |
-  | `requires_version` | The `rad agent show versions` output of the build carrying the fix |
+  | `requires_version` | The `rad agent show system versions` output of the build carrying the fix |
   | `requires_answer` | The corrected answer, from re-running the submitter's prompt on that build |
   | `requires_note` | A written explanation |
 

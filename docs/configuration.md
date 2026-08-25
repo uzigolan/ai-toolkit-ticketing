@@ -194,7 +194,7 @@ resolutions:
 | Key | Effect |
 | --- | --- |
 | `status` | The status the ticket moves into. Defaults to the entry's own id; use one of the statuses in [workflow.md](workflow.md#statuses), since nothing validates it. |
-| `requires_version` | The resolve form demands the `rad agent show versions` output of the fixed build |
+| `requires_version` | The resolve form demands the `rad agent show system versions` output of the fixed build |
 | `requires_answer` | It demands the corrected answer from re-running the submitter's prompt |
 | `requires_note` | It demands a written explanation |
 

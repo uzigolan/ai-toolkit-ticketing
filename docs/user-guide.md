@@ -188,7 +188,7 @@ incomplete work:
 
 | Outcome | What you must supply |
 | --- | --- |
-| Fixed | The `rad agent show versions` output of the build carrying the fix, **and** the corrected answer from re-running the submitter's prompt on that build |
+| Fixed | The `rad agent show system versions` output of the build carrying the fix, **and** the corrected answer from re-running the submitter's prompt on that build |
 | Known issue | A note explaining the decision |
 
 (The exact list of outcomes comes from `categories.yml`, so your install may

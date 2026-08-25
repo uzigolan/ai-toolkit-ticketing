@@ -131,7 +131,7 @@ Indexes: `idx_tickets_signature`, `idx_tickets_status`, `idx_tickets_toolkit`,
 | `prompt` | The exact prompt, kept separate so it can be re-run |
 | `transcript` | The pasted chat |
 | `suggestion` | What the submitter thinks the answer should have been |
-| `toolkit_version` | `rad agent show versions` output as reported |
+| `toolkit_version` | `rad agent show system versions` output as reported |
 | `severity` | From the configured severities; default `normal` |
 | `status` | See [workflow.md](workflow.md#statuses); default `new` |
 | `duplicate_of` | The earlier ticket this collapsed onto |

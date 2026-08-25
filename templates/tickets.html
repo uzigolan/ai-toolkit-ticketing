@@ -119,6 +119,7 @@
         {% endfor %}
       </td>
       <td class="col-facets">
+        <span class="facet-pill facet-source">{{ track_label(t.ticket_track) }}</span>
         {% for s in as_ids(t.knowledge_sources) %}
           <span class="facet-pill facet-source">{{ source_label(s) }}</span>
         {% endfor %}

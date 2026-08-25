@@ -82,9 +82,12 @@ def create_ticket(data: dict) -> int:
                (signature, toolkit, categories, knowledge_sources,
                 knowledge_scope, operations, title, description, expected_behavior,
                 actual_behavior, prompt, transcript, suggestion, toolkit_version, severity,
+                ticket_track, self_hosted_area, self_hosted_metric, self_hosted_result,
+                self_hosted_score, self_hosted_target, self_hosted_measurement,
+                self_hosted_evidence, self_hosted_doc_ref,
                 status, duplicate_of, submitter_username, submitter_email, created_at,
                 updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 signature,
                 data.get("toolkit", ""),
@@ -101,6 +104,15 @@ def create_ticket(data: dict) -> int:
                 data.get("suggestion", ""),
                 data.get("toolkit_version", ""),
                 data.get("severity", "normal"),
+                data.get("ticket_track", "toolkit"),
+                data.get("self_hosted_area", ""),
+                data.get("self_hosted_metric", ""),
+                data.get("self_hosted_result", ""),
+                data.get("self_hosted_score", ""),
+                data.get("self_hosted_target", ""),
+                data.get("self_hosted_measurement", ""),
+                data.get("self_hosted_evidence", ""),
+                data.get("self_hosted_doc_ref", ""),
                 "duplicate" if existing else "new",
                 existing["id"] if existing else None,
                 data["submitter_username"],
@@ -217,7 +229,10 @@ def update_status(ticket_id: int, status: str):
 # ownership are deliberately not in here.
 EDITABLE_FIELDS = ("toolkit", "categories", "knowledge_sources", "knowledge_scope",
                    "operations", "prompt", "transcript", "suggestion",
-                   "toolkit_version", "severity", "title", "description")
+                   "toolkit_version", "severity", "title", "description",
+                   "ticket_track", "self_hosted_area", "self_hosted_metric",
+                   "self_hosted_result", "self_hosted_score", "self_hosted_target",
+                   "self_hosted_measurement", "self_hosted_evidence", "self_hosted_doc_ref")
 
 
 def update_ticket(ticket_id: int, data: dict):
@@ -365,6 +380,15 @@ def export_as_eval_case(ticket_id: int, export_dir: str = "exports") -> str:
         "resolution_note": ticket["resolution_note"],
         "fixed_in_versions": ticket["fixed_in_versions"],
         "expected_answer": ticket["fixed_answer"],
+        "ticket_track": ticket.get("ticket_track") or "toolkit",
+        "self_hosted_area": ticket.get("self_hosted_area"),
+        "self_hosted_metric": ticket.get("self_hosted_metric"),
+        "self_hosted_result": ticket.get("self_hosted_result"),
+        "self_hosted_score": ticket.get("self_hosted_score"),
+        "self_hosted_target": ticket.get("self_hosted_target"),
+        "self_hosted_measurement": ticket.get("self_hosted_measurement"),
+        "self_hosted_evidence": ticket.get("self_hosted_evidence"),
+        "self_hosted_doc_ref": ticket.get("self_hosted_doc_ref"),
         "submitted_by": ticket["submitter_username"],
         "submitted_at": ticket["created_at"],
         "verified_by": ticket["verified_by"],

@@ -269,6 +269,23 @@ def _0012_families_scope_suggestion(cur):
     )
 
 
+def _0013_self_hosted_track(cur):
+    """Second ticketing subject: self-hosted POC score/measurement reporting."""
+    _add_column(cur, "tickets", "ticket_track", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_area", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_metric", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_result", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_score", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_target", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_measurement", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_evidence", "TEXT")
+    _add_column(cur, "tickets", "self_hosted_doc_ref", "TEXT")
+    cur.execute(
+        "UPDATE tickets SET ticket_track = 'toolkit' "
+        "WHERE ticket_track IS NULL OR TRIM(ticket_track) = ''"
+    )
+
+
 MIGRATIONS = [
     ("0001_tickets", "tickets table and indexes", _0001_tickets),
     ("0002_users", "local + LDAP user accounts", _0002_users),
@@ -283,6 +300,8 @@ MIGRATIONS = [
     ("0011_ticket_toolkit", "which AI toolkit the ticket is about", _0011_ticket_toolkit),
     ("0012_families_scope_suggestion", "multi-select families, knowledge scope, suggestion",
      _0012_families_scope_suggestion),
+    ("0013_self_hosted_track", "self-hosted track score and measurement fields",
+     _0013_self_hosted_track),
 ]
 
 

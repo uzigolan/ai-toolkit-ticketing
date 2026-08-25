@@ -10,6 +10,23 @@
 
   <div class="content-card">
     <div class="form-field">
+      <label>Ticketing subject</label>
+      <span class="form-hint">
+        Choose whether this report is about the existing toolkit ticketing flow or
+        the self-hosted AI POC score/measurement flow.
+      </span>
+      <div class="check-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+        {% for value, label in ticket_tracks %}
+          <label class="check-item">
+            <input type="radio" name="ticket_track" value="{{ value }}"
+                   {% if form.get('ticket_track', 'toolkit') == value %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field track-toolkit">
       <label for="toolkit">Which toolkit is this about?</label>
       <span class="form-hint">
         Everything else follows from this — who triages the ticket, and which repo the
@@ -17,13 +34,15 @@
       </span>
       <select class="form-control" id="toolkit" name="toolkit" required>
         {% for value, label in toolkits %}
+          {% if value != self_hosted_toolkit %}
           <option value="{{ value }}"
             {% if form.get('toolkit', default_toolkit) == value %}selected{% endif %}>{{ label }}</option>
+          {% endif %}
         {% endfor %}
       </select>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label>What went wrong</label>
       <span class="form-hint">
         Tick everything that applies — a slow answer that also needed three retries
@@ -37,6 +56,80 @@
             <span>{{ label }}</span>
           </label>
         {% endfor %}
+      </div>
+    </div>
+
+    <div class="track-self-hosted" style="display:none;">
+      <div class="form-field">
+        <label for="self_hosted_area">POC area</label>
+        <span class="form-hint">
+          The benchmark area from Self-Hosted AI POC v1.02 that this ticket reports.
+        </span>
+        <select class="form-control" id="self_hosted_area" name="self_hosted_area">
+          <option value="">Choose an area...</option>
+          {% for value, label in self_hosted_areas %}
+            <option value="{{ value }}"
+              {% if form.get('self_hosted_area', '') == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_metric">Score / measurement</label>
+        <span class="form-hint">
+          Which score or benchmark metric this ticket is measuring.
+        </span>
+        <select class="form-control" id="self_hosted_metric" name="self_hosted_metric">
+          <option value="">Choose a metric...</option>
+          {% for value, label in self_hosted_metrics %}
+            <option value="{{ value }}"
+              {% if form.get('self_hosted_metric', '') == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_result">Result classification <span class="label-optional">optional</span></label>
+        <select class="form-control" id="self_hosted_result" name="self_hosted_result">
+          <option value="">Not set</option>
+          {% for value, label in self_hosted_results %}
+            <option value="{{ value }}"
+              {% if form.get('self_hosted_result', '') == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_score">Measured score/value <span class="label-optional">optional</span></label>
+        <input class="form-control" id="self_hosted_score" name="self_hosted_score"
+               placeholder="e.g. 78% or 4.2/5" value="{{ form.get('self_hosted_score', '') }}">
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_target">Target / pass threshold <span class="label-optional">optional</span></label>
+        <input class="form-control" id="self_hosted_target" name="self_hosted_target"
+               placeholder="e.g. >= 75%" value="{{ form.get('self_hosted_target', '') }}">
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_measurement">Measurement details</label>
+        <span class="form-hint">
+          Add the exact measurement setup, method, observed values, and conclusion.
+        </span>
+        <textarea class="form-control" id="self_hosted_measurement" name="self_hosted_measurement" rows="6"
+                  placeholder="How this was measured, what was observed, and whether it passed">{{ form.get('self_hosted_measurement', '') }}</textarea>
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_evidence">Evidence / links <span class="label-optional">optional</span></label>
+        <textarea class="form-control mono" id="self_hosted_evidence" name="self_hosted_evidence" rows="4"
+                  placeholder="Benchmark logs, dashboard links, artifacts, screenshots paths">{{ form.get('self_hosted_evidence', '') }}</textarea>
+      </div>
+
+      <div class="form-field">
+        <label for="self_hosted_doc_ref">Document section reference <span class="label-optional">optional</span></label>
+        <input class="form-control" id="self_hosted_doc_ref" name="self_hosted_doc_ref"
+               placeholder="e.g. Section 5.20 Engineering Quality Score" value="{{ form.get('self_hosted_doc_ref', '') }}">
       </div>
     </div>
 
@@ -66,11 +159,11 @@
       <label for="toolkit_version">Version output of the toolkit</label>
       <span class="form-hint">
         Run the toolkit's version command in the same session and paste the output
-        (<code>rad agent show versions</code> for rad-agent-toolkit) — it pins the ticket
+        (<code>rad agent show system versions</code> for rad-agent-toolkit) — it pins the ticket
         to an exact build.
       </span>
       <textarea class="form-control mono" id="toolkit_version" name="toolkit_version"
-                rows="4" placeholder="e.g. rad agent show versions">{{ form.get('toolkit_version', '') }}</textarea>
+                rows="4" placeholder="e.g. rad agent show system versions">{{ form.get('toolkit_version', '') }}</textarea>
     </div>
 
     <div class="form-field">
@@ -166,25 +259,66 @@
     var form = document.querySelector("form");
     var button = document.getElementById("submit-ticket");
     var hint = document.getElementById("submit-hint");
+    var trackInputs = form.querySelectorAll('input[name="ticket_track"]');
+    var toolkitBlocks = form.querySelectorAll('.track-toolkit');
+    var selfHostedBlock = form.querySelector('.track-self-hosted');
     var toolkit = document.getElementById("toolkit");
+    var area = document.getElementById("self_hosted_area");
+    var metric = document.getElementById("self_hosted_metric");
+    var measurement = document.getElementById("self_hosted_measurement");
+    var versionLabel = document.querySelector('label[for="toolkit_version"]');
+    var versionHint = document.getElementById("toolkit_version").previousElementSibling;
     var prompt = document.getElementById("prompt");
     var transcript = document.getElementById("transcript");
 
+    function trackValue() {
+      var checked = form.querySelector('input[name="ticket_track"]:checked');
+      return checked ? checked.value : "toolkit";
+    }
+
+    function toggleTrackFields() {
+      var selfHosted = trackValue() === "self_hosted";
+      toolkitBlocks.forEach(function (el) { el.style.display = selfHosted ? "none" : ""; });
+      if (selfHostedBlock) { selfHostedBlock.style.display = selfHosted ? "" : "none"; }
+      if (versionLabel) {
+        versionLabel.textContent = selfHosted ? "Platform/model version output" : "Version output of the toolkit";
+      }
+      if (versionHint) {
+        versionHint.innerHTML = selfHosted
+          ? "Paste the exact self-hosted stack/model versions used for this measurement run."
+          : "Run the toolkit's version command in the same session and paste the output (<code>rad agent show system versions</code> for rad-agent-toolkit) — it pins the ticket to an exact build.";
+      }
+    }
+
     function check() {
       var missing = [];
-      if (!toolkit.value) { missing.push("a toolkit"); }
-      if (!form.querySelector('input[name="categories"]:checked')) {
-        missing.push("what went wrong");
-      }
-      if (!prompt.value.trim() && !transcript.value.trim()) {
-        missing.push("the prompt or the pasted chat");
+      var selfHosted = trackValue() === "self_hosted";
+      if (selfHosted) {
+        if (!area.value) { missing.push("POC area"); }
+        if (!metric.value) { missing.push("score/measurement"); }
+        if (!measurement.value.trim()) { missing.push("measurement details"); }
+      } else {
+        if (!toolkit.value) { missing.push("a toolkit"); }
+        if (!form.querySelector('input[name="categories"]:checked')) {
+          missing.push("what went wrong");
+        }
+        if (!prompt.value.trim() && !transcript.value.trim()) {
+          missing.push("the prompt or the pasted chat");
+        }
       }
       button.disabled = missing.length > 0;
       hint.textContent = missing.length ? "Still needed: " + missing.join(", ") + "." : "";
     }
 
+    trackInputs.forEach(function (input) {
+      input.addEventListener("change", function () {
+        toggleTrackFields();
+        check();
+      });
+    });
     form.addEventListener("input", check);
     form.addEventListener("change", check);
+    toggleTrackFields();
     check();
   })();
 </script>

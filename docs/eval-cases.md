@@ -58,7 +58,7 @@ same ticket and different for a ticket whose content has been edited.
   "title": "ETX-2 QoS shaper limits quoted from the wrong manual revision",
   "prompt": "what is the maximum shaper rate on an ETX-2 GbE port?",
   "expected_answer": "…the corrected answer, pasted by the admin…",
-  "fixed_in_versions": "…rad agent show versions output…",
+  "fixed_in_versions": "…rad agent show system versions output…",
   "resolution": "fixed",
   "verified_by": "alice",
   "follow_ups": [
