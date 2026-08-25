@@ -862,6 +862,19 @@ def bootstrap():
             )
         except ValueError:
             pass
+    # Keep bootstrap credentials deterministic for local deployments.
+    # If this is a local account, force active admin + configured password
+    # so admin/admin works out of the box when defaults are used.
+    admin_user = users.get_user(bootstrap_admin)
+    if admin_user and admin_user.get("auth_source") == "local":
+        users.set_role(admin_user["id"], "admin")
+        users.set_status(admin_user["id"], "active")
+        users.set_password(admin_user["id"], bootstrap_password)
+    elif admin_user:
+        app.logger.warning(
+            "Bootstrap username '%s' exists as LDAP account; local password bootstrap skipped.",
+            bootstrap_admin,
+        )
     if generated:
         app.logger.warning(
             "Created first local admin '%s' with generated password: %s  "
