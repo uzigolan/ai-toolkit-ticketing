@@ -20,7 +20,7 @@ from version import APP_VERSION
 
 # Admins never close a ticket -- they resolve it and hand it back. Only the
 # submitter can settle it, by verifying, and only then does it stop taking input.
-RESOLVED_STATUSES = ("fixed", "known_limitation")
+RESOLVED_STATUSES = ("in_verification",)
 LOCKED_STATUSES = ("verified",)
 
 
@@ -150,7 +150,7 @@ SORT_COLUMNS = {
 }
 DEFAULT_SORT = "id"
 # Sorting these alphabetically would be useless: "high, low, normal".
-STATUS_ORDER = ("entered", "triaged", "working_on_it", "fixed", "known_limitation",
+STATUS_ORDER = ("entered", "working_on_it", "known_limitation", "solved", "in_verification",
                 "verified", "duplicate")
 
 
@@ -300,7 +300,7 @@ def verify_ticket(ticket_id: int, verified_by: str):
         conn.commit()
 
 
-def reopen_ticket(ticket_id: int, status: str = "triaged"):
+def reopen_ticket(ticket_id: int, status: str = "entered"):
     """Reopening clears the outcome so a stale resolution can't linger on an open ticket."""
     with closing(get_conn()) as conn:
         conn.execute(

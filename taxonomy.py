@@ -79,8 +79,11 @@ BUILTIN = {
     ],
     "severities": [("low", "Low"), ("normal", "Normal"), ("high", "High — blocking my work")],
     "resolutions": [
-        {"id": "fixed", "label": "Fixed",
-         "status": "fixed", "requires_version": True,
+        {"id": "solved", "label": "Solved",
+         "status": "solved", "requires_version": True,
+         "requires_answer": False, "requires_note": False},
+        {"id": "in_verification", "label": "In verification",
+         "status": "in_verification", "requires_version": False,
          "requires_answer": False, "requires_note": False},
         {"id": "known_limitation", "label": "Known limitation",
          "status": "known_limitation", "requires_version": False,

@@ -294,6 +294,17 @@ def _0014_status_vocabulary(cur):
     cur.execute("UPDATE tickets SET resolution = 'known_limitation' WHERE resolution = 'known_issue'")
 
 
+def _0015_jira_like_statuses(cur):
+    """Move status labels to entered/working/known limitation/solved/in verification."""
+    cur.execute("UPDATE tickets SET status = 'entered' WHERE status = 'new'")
+    cur.execute("UPDATE tickets SET status = 'working_on_it' WHERE status = 'triaged'")
+    cur.execute("UPDATE tickets SET status = 'solved' WHERE status = 'fixed'")
+    cur.execute("UPDATE tickets SET status = 'in_verification' WHERE status = 'ready_for_verification'")
+    cur.execute("UPDATE tickets SET status = 'known_limitation' WHERE status = 'known_issue'")
+    cur.execute("UPDATE tickets SET resolution = 'solved' WHERE resolution = 'fixed'")
+    cur.execute("UPDATE tickets SET resolution = 'known_limitation' WHERE resolution = 'known_issue'")
+
+
 MIGRATIONS = [
     ("0001_tickets", "tickets table and indexes", _0001_tickets),
     ("0002_users", "local + LDAP user accounts", _0002_users),
@@ -312,6 +323,8 @@ MIGRATIONS = [
      _0013_self_hosted_track),
     ("0014_status_vocabulary", "entered/fixed/known limitation status names",
      _0014_status_vocabulary),
+    ("0015_jira_like_statuses", "entered/working/known limitation/solved/in verification",
+     _0015_jira_like_statuses),
 ]
 
 

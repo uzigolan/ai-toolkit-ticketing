@@ -700,17 +700,14 @@ def ticket_detail(ticket_id):
             flash("Reopened; the previous outcome was cleared.", "success")
 
         elif is_admin:
-            if action == "triage":
-                db.update_status(ticket_id, "triaged")
-                flash("Marked triaged.", "success")
-            elif action == "resolve":
+            if action == "resolve":
                 resolution = request.form.get("resolution", "")
                 fixed_in = request.form.get("fixed_in_versions", "").strip()
                 fixed_answer = request.form.get("fixed_answer", "").strip()
                 note = request.form.get("resolution_note", "").strip()
                 label = RESOLUTION_LABELS.get(resolution, resolution)
                 if resolution not in RESOLUTION_LABELS:
-                    flash("Choose an outcome before handing the ticket back.", "error")
+                    flash("Choose a status.", "error")
                 elif resolution in RESOLUTIONS_NEEDING_VERSION and not fixed_in:
                     flash(
                         f"'{label}' needs the `rad agent show system versions` output of the "
@@ -735,11 +732,7 @@ def ticket_detail(ticket_id):
                         fixed_answer=fixed_answer,
                         note=note,
                     )
-                    flash(
-                        f"Marked '{label}'. {ticket['submitter_username']} decides "
-                        f"whether it's verified or goes back to open.",
-                        "success",
-                    )
+                    flash(f"Status set to '{label}'.", "success")
             elif action == "promote":
                 path = db.export_as_eval_case(ticket_id)
                 flash(
@@ -848,15 +841,32 @@ def admin_user_action(user_id, action):
 
 def bootstrap():
     migrate_db.migrate(logger=app.logger)
+    bootstrap_admin = os.environ.get("TICKETING_BOOTSTRAP_ADMIN", "admin")
+    bootstrap_password = os.environ.get("TICKETING_BOOTSTRAP_PASSWORD") or "admin"
     generated = users.ensure_bootstrap_admin(
-        os.environ.get("TICKETING_BOOTSTRAP_ADMIN", "admin"),
-        os.environ.get("TICKETING_BOOTSTRAP_PASSWORD"),
+        bootstrap_admin,
+        bootstrap_password,
     )
+    if not users.get_user(bootstrap_admin):
+        try:
+            users.create_user(
+                bootstrap_admin,
+                password=bootstrap_password,
+                role="admin",
+                auth_source="local",
+            )
+            app.logger.warning(
+                "Created local admin '%s' with password from TICKETING_BOOTSTRAP_PASSWORD "
+                "(default is 'admin'). Change it immediately.",
+                bootstrap_admin,
+            )
+        except ValueError:
+            pass
     if generated:
         app.logger.warning(
             "Created first local admin '%s' with generated password: %s  "
             "(shown once -- change it at /account/password)",
-            os.environ.get("TICKETING_BOOTSTRAP_ADMIN", "admin"),
+            bootstrap_admin,
             generated,
         )
 

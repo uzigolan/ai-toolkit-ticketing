@@ -97,7 +97,7 @@ CHAT
     </div>
   {% elif awaiting and not is_owner %}
     <p class="form-hint" style="margin-top:14px;">
-      Waiting for {{ ticket.submitter_username }} to verify or reopen it.
+      Waiting for {{ ticket.submitter_username }} to verify or reopen it from in verification.
     </p>
   {% endif %}
 </div>
@@ -256,10 +256,6 @@ CHAT
   <div class="actions">
     <form method="post">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-ghost" name="action" value="triage">Mark triaged</button>
-    </form>
-    <form method="post">
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-soft" name="action" value="promote">
         Promote to eval case{% if ticket.promoted_at %} (again){% endif %}
       </button>
@@ -274,16 +270,16 @@ CHAT
 
   {% if not locked and not awaiting %}
     <hr style="margin:20px 0; border-color: var(--border);">
-    <div class="section-label">Hand back to {{ ticket.submitter_username }}</div>
+    <div class="section-label">Set ticket status</div>
     <p class="form-hint" style="margin-bottom:12px;">
-      Admins don't close tickets. Record the outcome and {{ ticket.submitter_username }}
-      decides whether it's verified or goes back to open.
+      Admins can set entered, working on it, known limitation, solved, or in verification.
+      Only {{ ticket.submitter_username }} can move from in verification to verified.
     </p>
     <form method="post" id="resolve-form">
       <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="resolve">
       <div class="form-field">
-        <label for="resolution">Outcome</label>
+        <label for="resolution">Status</label>
         <select class="form-control" id="resolution" name="resolution" required>
           {% for r in resolutions %}
             <option value="{{ r.id }}"
@@ -316,7 +312,7 @@ CHAT
             This ticket has no separate prompt — take the request from the pasted chat above.
           </p>
         {% endif %}
-        <label for="fixed_answer">The answer now</label>
+        <label for="fixed_answer">The answer now <span class="label-optional">optional</span></label>
         <span class="form-hint">
           Run that prompt against the fixed build and paste what it says now. This is what
           the submitter reads to see the problem is actually gone, and it becomes the
@@ -330,7 +326,7 @@ CHAT
         <textarea class="form-control" id="resolution_note" name="resolution_note" rows="3"
                   placeholder="What changed, or why this isn't being fixed."></textarea>
       </div>
-      <button type="submit" class="btn btn-primary">Hand back</button>
+      <button type="submit" class="btn btn-primary">Update status</button>
     </form>
 
     <script>
