@@ -20,7 +20,7 @@ from version import APP_VERSION
 
 # Admins never close a ticket -- they resolve it and hand it back. Only the
 # submitter can settle it, by verifying, and only then does it stop taking input.
-RESOLVED_STATUSES = ("ready_for_verification", "known_issue")
+RESOLVED_STATUSES = ("fixed", "known_limitation")
 LOCKED_STATUSES = ("verified",)
 
 
@@ -113,7 +113,7 @@ def create_ticket(data: dict) -> int:
                 data.get("self_hosted_measurement", ""),
                 data.get("self_hosted_evidence", ""),
                 data.get("self_hosted_doc_ref", ""),
-                "duplicate" if existing else "new",
+                "duplicate" if existing else "entered",
                 existing["id"] if existing else None,
                 data["submitter_username"],
                 data.get("submitter_email", ""),
@@ -150,7 +150,7 @@ SORT_COLUMNS = {
 }
 DEFAULT_SORT = "id"
 # Sorting these alphabetically would be useless: "high, low, normal".
-STATUS_ORDER = ("new", "triaged", "ready_for_verification", "known_issue",
+STATUS_ORDER = ("entered", "triaged", "working_on_it", "fixed", "known_limitation",
                 "verified", "duplicate")
 
 

@@ -160,21 +160,21 @@ severities:
   - id: high
     label: High — blocking my work
 
-# What an admin can do with a finished ticket. Admins never close: they hand the
-# ticket back to whoever filed it, and only that person can close it as verified.
+# What an admin can do with a ticket.
 #   status:           the state the ticket moves into.
 #   requires_version: demands the `rad agent show system versions` output of the build
 #                     that carries the fix.
-#   requires_answer:  demands the corrected answer, produced by re-running the
-#                     submitter's original prompt against that build.
 #   requires_note:    demands an explanation.
 resolutions:
   - id: fixed
-    label: Fixed — ready for verification
-    status: ready_for_verification
+    label: Fixed
+    status: fixed
     requires_version: true
-    requires_answer: true
-  - id: known_issue
-    label: Known issue — not fixed for now
-    status: known_issue
+  - id: known_limitation
+    label: Known limitation
+    status: known_limitation
+    requires_note: true
+  - id: working_on_it
+    label: Working on it
+    status: working_on_it
     requires_note: true

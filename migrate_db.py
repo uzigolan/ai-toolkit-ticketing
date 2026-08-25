@@ -286,6 +286,14 @@ def _0013_self_hosted_track(cur):
     )
 
 
+def _0014_status_vocabulary(cur):
+    """Normalize legacy status names to the simpler workflow vocabulary."""
+    cur.execute("UPDATE tickets SET status = 'entered' WHERE status = 'new'")
+    cur.execute("UPDATE tickets SET status = 'fixed' WHERE status = 'ready_for_verification'")
+    cur.execute("UPDATE tickets SET status = 'known_limitation' WHERE status = 'known_issue'")
+    cur.execute("UPDATE tickets SET resolution = 'known_limitation' WHERE resolution = 'known_issue'")
+
+
 MIGRATIONS = [
     ("0001_tickets", "tickets table and indexes", _0001_tickets),
     ("0002_users", "local + LDAP user accounts", _0002_users),
@@ -302,6 +310,8 @@ MIGRATIONS = [
      _0012_families_scope_suggestion),
     ("0013_self_hosted_track", "self-hosted track score and measurement fields",
      _0013_self_hosted_track),
+    ("0014_status_vocabulary", "entered/fixed/known limitation status names",
+     _0014_status_vocabulary),
 ]
 
 

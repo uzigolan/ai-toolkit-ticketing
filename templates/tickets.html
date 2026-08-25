@@ -9,9 +9,9 @@
 <div class="filters">
   <a href="{{ url_for(list_route, **list_args(status=None)) }}"
      class="{% if not active_status %}active{% endif %}">All</a>
-  {% for value, label in [('new', 'New'), ('triaged', 'Triaged'),
-                          ('ready_for_verification', 'Ready for verification'),
-                          ('known_issue', 'Known issue'), ('verified', 'Verified'),
+  {% for value, label in [('entered', 'Entered'), ('triaged', 'Triaged'),
+                          ('working_on_it', 'Working on it'),
+                          ('fixed', 'Fixed'), ('known_limitation', 'Known limitation'), ('verified', 'Verified'),
                           ('duplicate', 'Duplicates')] %}
     <a href="{{ url_for(list_route, **list_args(status=value)) }}"
        class="{% if active_status == value %}active{% endif %}">{{ label }}</a>
