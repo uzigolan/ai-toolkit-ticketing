@@ -166,6 +166,9 @@ severities:
 #                     that carries the fix.
 #   requires_note:    demands an explanation.
 resolutions:
+  - id: entered
+    label: Entered
+    status: entered
   - id: solved
     label: Solved
     status: solved

@@ -622,7 +622,57 @@ def _render_list(title, subtitle, list_route, submitter=None):
         page_sizes=db.PAGE_SIZES,
         total=total,
         total_pages=total_pages,
+        resolutions=RESOLUTIONS,
     )
+
+
+def _apply_admin_status(ticket_id):
+    resolution = request.form.get("resolution", "")
+    fixed_in = request.form.get("fixed_in_versions", "").strip()
+    fixed_answer = request.form.get("fixed_answer", "").strip()
+    note = request.form.get("resolution_note", "").strip()
+    label = RESOLUTION_LABELS.get(resolution, resolution)
+    if resolution not in RESOLUTION_LABELS:
+        flash("Choose a status.", "error")
+        return
+    if resolution in RESOLUTIONS_NEEDING_VERSION and not fixed_in:
+        flash(
+            f"'{label}' needs the `rad agent show system versions` output of the "
+            f"build that carries the fix.",
+            "error",
+        )
+        return
+    if resolution in RESOLUTIONS_NEEDING_ANSWER and not fixed_answer:
+        flash(
+            f"'{label}' needs the corrected answer — re-run the submitter's "
+            f"prompt on the fixed build and paste what it says now.",
+            "error",
+        )
+        return
+    if resolution in RESOLUTIONS_NEEDING_NOTE and not note:
+        flash(f"'{label}' needs a note explaining the decision.", "error")
+        return
+    db.resolve_ticket(
+        ticket_id,
+        resolution,
+        RESOLUTION_STATUS[resolution],
+        resolved_by=session["username"],
+        fixed_in_versions=fixed_in,
+        fixed_answer=fixed_answer,
+        note=note,
+    )
+    flash(f"Ticket #{ticket_id} status set to '{label}'.", "success")
+
+
+@app.route("/tickets/<int:ticket_id>/status", methods=["POST"])
+@admin_required
+def update_ticket_status(ticket_id):
+    ticket = db.get_ticket(ticket_id)
+    if not ticket:
+        abort(404)
+    _apply_admin_status(ticket_id)
+    next_url = _safe_next(request.form.get("next", ""))
+    return redirect(next_url or url_for("admin_queue"))
 
 
 @app.route("/tickets")
@@ -701,38 +751,7 @@ def ticket_detail(ticket_id):
 
         elif is_admin:
             if action == "resolve":
-                resolution = request.form.get("resolution", "")
-                fixed_in = request.form.get("fixed_in_versions", "").strip()
-                fixed_answer = request.form.get("fixed_answer", "").strip()
-                note = request.form.get("resolution_note", "").strip()
-                label = RESOLUTION_LABELS.get(resolution, resolution)
-                if resolution not in RESOLUTION_LABELS:
-                    flash("Choose a status.", "error")
-                elif resolution in RESOLUTIONS_NEEDING_VERSION and not fixed_in:
-                    flash(
-                        f"'{label}' needs the `rad agent show system versions` output of the "
-                        f"build that carries the fix.",
-                        "error",
-                    )
-                elif resolution in RESOLUTIONS_NEEDING_ANSWER and not fixed_answer:
-                    flash(
-                        f"'{label}' needs the corrected answer — re-run the submitter's "
-                        f"prompt on the fixed build and paste what it says now.",
-                        "error",
-                    )
-                elif resolution in RESOLUTIONS_NEEDING_NOTE and not note:
-                    flash(f"'{label}' needs a note explaining the decision.", "error")
-                else:
-                    db.resolve_ticket(
-                        ticket_id,
-                        resolution,
-                        RESOLUTION_STATUS[resolution],
-                        resolved_by=session["username"],
-                        fixed_in_versions=fixed_in,
-                        fixed_answer=fixed_answer,
-                        note=note,
-                    )
-                    flash(f"Status set to '{label}'.", "success")
+                _apply_admin_status(ticket_id)
             elif action == "promote":
                 path = db.export_as_eval_case(ticket_id)
                 flash(

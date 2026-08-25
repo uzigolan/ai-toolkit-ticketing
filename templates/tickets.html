@@ -94,7 +94,7 @@
       <th class="col-facets">Data &amp; activity</th>
       {{ sort_head('severity', 'Severity', 'col-sev') }}
       {{ sort_head('status', 'Status', 'col-status') }}
-      {% if list_route == 'my_tickets' %}
+      {% if list_route == 'my_tickets' or session.get('role') == 'admin' %}
         <th class="col-actions">Actions</th>
       {% else %}
         {{ sort_head('submitter', 'Submitter', 'col-submitter') }}
@@ -148,6 +148,24 @@
               </form>
             {% endif %}
           </div>
+        </td>
+      {% elif session.get('role') == 'admin' %}
+        <td class="col-actions">
+          <form method="post" action="{{ url_for('update_ticket_status', ticket_id=t.id) }}" class="actions">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <select name="resolution" class="form-control page-size" aria-label="Status for ticket #{{ t.id }}">
+              {% for r in resolutions %}
+                <option value="{{ r.id }}" {% if r.status == t.status %}selected{% endif %}>{{ r.label }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="fixed_in_versions" class="form-control page-size"
+                   placeholder="Fixed version" aria-label="Fixed version for ticket #{{ t.id }}">
+                 <input type="text" name="resolution_note" class="form-control page-size"
+                   placeholder="Note" aria-label="Status note for ticket #{{ t.id }}">
+            <button class="btn btn-soft btn-sm" type="submit">Apply</button>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('ticket_detail', ticket_id=t.id) }}">Open</a>
+          </form>
         </td>
       {% else %}
         <td class="col-submitter">{{ t.submitter_username }}</td>
