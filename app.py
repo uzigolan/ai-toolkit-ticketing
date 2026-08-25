@@ -394,8 +394,7 @@ def _ticket_form_data() -> dict:
     title = _derive_title(prompt, transcript, self_measurement)
     if track == "self_hosted" and title == "Untitled report":
         area = SELF_HOSTED_AREA_LABELS.get(request.form.get("self_hosted_area", ""), "Self-hosted")
-        metric = SELF_HOSTED_METRIC_LABELS.get(request.form.get("self_hosted_metric", ""), "assessment")
-        title = f"{area} - {metric}"
+        title = f"{area} report"
 
     if track == "self_hosted":
         description_parts = [
@@ -437,8 +436,8 @@ def _ticket_form_error(data: dict) -> str:
     if data["ticket_track"] == "self_hosted":
         if data["self_hosted_area"] not in SELF_HOSTED_AREA_LABELS:
             return "Choose the self-hosted POC area being measured."
-        if data["self_hosted_metric"] not in SELF_HOSTED_METRIC_LABELS:
-            return "Choose which score/measurement this report is about."
+        if data["self_hosted_metric"] and data["self_hosted_metric"] not in SELF_HOSTED_METRIC_LABELS:
+            return "Choose a valid score/measurement value."
         if data["self_hosted_result"] and data["self_hosted_result"] not in SELF_HOSTED_RESULT_LABELS:
             return "Choose a valid self-hosted result classification."
         if not data["self_hosted_measurement"]:

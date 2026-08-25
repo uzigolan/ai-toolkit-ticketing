@@ -75,12 +75,12 @@
       </div>
 
       <div class="form-field">
-        <label for="self_hosted_metric">Score / measurement</label>
+        <label for="self_hosted_metric">Score / measurement type <span class="label-optional">optional</span></label>
         <span class="form-hint">
-          Which score or benchmark metric this ticket is measuring.
+          Use this only when one of the predefined score types fits your report.
         </span>
         <select class="form-control" id="self_hosted_metric" name="self_hosted_metric">
-          <option value="">Choose a metric...</option>
+          <option value="">Not set</option>
           {% for value, label in self_hosted_metrics %}
             <option value="{{ value }}"
               {% if form.get('self_hosted_metric', '') == value %}selected{% endif %}>{{ label }}</option>
@@ -89,26 +89,9 @@
       </div>
 
       <div class="form-field">
-        <label for="self_hosted_result">Result classification <span class="label-optional">optional</span></label>
-        <select class="form-control" id="self_hosted_result" name="self_hosted_result">
-          <option value="">Not set</option>
-          {% for value, label in self_hosted_results %}
-            <option value="{{ value }}"
-              {% if form.get('self_hosted_result', '') == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="form-field">
         <label for="self_hosted_score">Measured score/value <span class="label-optional">optional</span></label>
         <input class="form-control" id="self_hosted_score" name="self_hosted_score"
                placeholder="e.g. 78% or 4.2/5" value="{{ form.get('self_hosted_score', '') }}">
-      </div>
-
-      <div class="form-field">
-        <label for="self_hosted_target">Target / pass threshold <span class="label-optional">optional</span></label>
-        <input class="form-control" id="self_hosted_target" name="self_hosted_target"
-               placeholder="e.g. >= 75%" value="{{ form.get('self_hosted_target', '') }}">
       </div>
 
       <div class="form-field">
@@ -125,15 +108,9 @@
         <textarea class="form-control mono" id="self_hosted_evidence" name="self_hosted_evidence" rows="4"
                   placeholder="Benchmark logs, dashboard links, artifacts, screenshots paths">{{ form.get('self_hosted_evidence', '') }}</textarea>
       </div>
-
-      <div class="form-field">
-        <label for="self_hosted_doc_ref">Document section reference <span class="label-optional">optional</span></label>
-        <input class="form-control" id="self_hosted_doc_ref" name="self_hosted_doc_ref"
-               placeholder="e.g. Section 5.20 Engineering Quality Score" value="{{ form.get('self_hosted_doc_ref', '') }}">
-      </div>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label for="prompt">The prompt you used</label>
       <span class="form-hint">
         Just the request you gave the agent, on its own — not the whole conversation.
@@ -144,7 +121,7 @@
                 placeholder="e.g. how do I rate limit a service to 100M on etx-2i">{{ form.get('prompt', '') }}</textarea>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label for="transcript">Paste the whole chat</label>
       <span class="form-hint">
         In the Copilot chat panel, right-click &rarr; <strong>Copy All</strong>, then paste
@@ -166,7 +143,7 @@
                 rows="4" placeholder="e.g. rad agent show system versions">{{ form.get('toolkit_version', '') }}</textarea>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label for="suggestion">
         What would fix it — or what's the right answer?
         <span class="label-optional">optional</span>
@@ -181,7 +158,7 @@
                 placeholder="Add this logic / index that document / or paste the answer it should have given">{{ form.get('suggestion', '') }}</textarea>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label>Data involved <span class="label-optional">optional</span></label>
       <span class="form-hint">
         Where the answer should have come from. Tick as many as apply — "the CLI
@@ -198,7 +175,7 @@
       </div>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label>Knowledge needed</label>
       <span class="form-hint">
         RAD-specific knowledge, general market knowledge, or both.
@@ -215,7 +192,7 @@
       </div>
     </div>
 
-    <div class="form-field">
+    <div class="form-field track-toolkit">
       <label>What the agent was doing <span class="label-optional">optional</span></label>
       <span class="form-hint">
         Also a combination — a design discussion that ends in a config change touches
@@ -264,7 +241,6 @@
     var selfHostedBlock = form.querySelector('.track-self-hosted');
     var toolkit = document.getElementById("toolkit");
     var area = document.getElementById("self_hosted_area");
-    var metric = document.getElementById("self_hosted_metric");
     var measurement = document.getElementById("self_hosted_measurement");
     var versionLabel = document.querySelector('label[for="toolkit_version"]');
     var versionHint = document.getElementById("toolkit_version").previousElementSibling;
@@ -295,7 +271,6 @@
       var selfHosted = trackValue() === "self_hosted";
       if (selfHosted) {
         if (!area.value) { missing.push("POC area"); }
-        if (!metric.value) { missing.push("score/measurement"); }
         if (!measurement.value.trim()) { missing.push("measurement details"); }
       } else {
         if (!toolkit.value) { missing.push("a toolkit"); }
