@@ -513,8 +513,11 @@ def new_ticket():
             flash(f"Ticket #{ticket_id} submitted. Thanks for the report.", "success")
         return redirect(url_for("my_tickets"))
 
+    track = request.args.get("ticket_track", "toolkit").strip()
+    if track not in TRACK_LABELS:
+        track = "toolkit"
     return _render_ticket_form(
-        MultiDict(), url_for("new_ticket"), "Submit ticket",
+        MultiDict({"ticket_track": track}), url_for("new_ticket"), "Submit ticket",
         "Submit a ticket", NEW_TICKET_SUBTITLE,
     )
 

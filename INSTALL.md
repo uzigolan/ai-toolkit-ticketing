@@ -158,16 +158,17 @@ optional, not required.
 
 ## Run as a Linux service
 
-Tested on Rocky/RHEL 8+ with systemd. The service runs entirely out of a git
-clone in the `rocky` user's home — its own `.venv`, its own `config.ini`, its
+Tested on Rocky/RHEL 8+ and Ubuntu 22.04/24.04 with systemd. The service runs
+entirely out of a git clone in the service user's home — its own `.venv`, its
 own database — and never touches the OS python beyond creating that venv.
 Later updates are then a `git pull` and a restart, as in
 [Upgrading](#upgrading).
 
-Paths below assume `/home/rocky/ai-toolkit-ticketing` and the user `rocky`,
-which is what the shipped unit file expects. Using another home or account
-means editing the five paths and the `User=`/`Group=` lines in
-`scripts/install/rad-ticketing.service`.
+The commands below use `~/ai-toolkit-ticketing` and the account that owns the
+clone. The shipped unit file uses `rocky` as its example account; before
+installing it, change its `User=`, `Group=`, `WorkingDirectory=`,
+`EnvironmentFile=`, `ExecStartPre=`, `ExecStart=`, and `ReadWritePaths=` lines
+to match the account and home directory on your server.
 
 Order matters: clone, venv, config, database, and only then install the unit —
 starting the service before the venv and `config.ini` exist just gives you a
@@ -175,13 +176,27 @@ failed unit to debug.
 
 **1. Prerequisites**
 
+On Rocky/RHEL 8+:
+
 ```bash
 sudo dnf install -y python3 python3-pip git sqlite
 ```
 
+On Ubuntu 22.04 or 24.04:
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip git sqlite3
+```
+
+Use a dedicated service account on either distribution. Run the setup as that
+account, not with `sudo`, so the clone, virtual environment, configuration, and
+database remain writable by the service. The examples use `~` and `$HOME` so
+they work for accounts such as `rad` as well as `rocky`.
+
 **2. Clone the repo**
 
-As `rocky`, not with sudo — everything must stay owned by the service user.
+As the service user, not with sudo — everything must stay owned by that user.
 
 ```bash
 cd ~
@@ -235,10 +250,16 @@ LDAP_BASE_DN = dc=yourcompany,dc=com
 
 `bind = 0.0.0.0` answers on every address of the host, on whichever ports are
 set above; use `127.0.0.1` when a proxy on the same machine fronts it. If
-firewalld is running, open the port to match:
+firewalld is running on Rocky/RHEL, open the port to match:
 
 ```bash
 sudo firewall-cmd --add-port=5000/tcp --permanent && sudo firewall-cmd --reload
+```
+
+On Ubuntu with UFW enabled, use:
+
+```bash
+sudo ufw allow 5000/tcp
 ```
 
 To have the service terminate TLS itself instead of putting a proxy in front,
@@ -260,10 +281,66 @@ for testing:
 .venv/bin/python scripts/make_self_signed_cert.py
 ```
 
-Ports below 1024 — 444 included — need `CAP_NET_BIND_SERVICE`, which the unit
-already grants; no `setcap` on the interpreter is required. If either file is
-missing, `serve.py` exits 1 and names them rather than quietly serving
-plaintext.
+Port 443 is a protected OS port. The firewall controls who may connect; it
+does not give the application permission to create the listener. Choose one of
+these simple options:
+
+**Run the app directly:** run it with `sudo` when `[HTTPS] port = 443`:
+
+```bash
+cd ~/ai-toolkit-ticketing
+set -a; . ./.env; set +a
+sudo -E .venv/bin/python serve.py
+```
+
+**Run the app as the normal user, port 443 only:** install `authbind` and grant
+the `rad` user access to port 443. Replace `rad` with the account that owns the
+clone:
+
+```bash
+sudo apt install -y authbind
+sudo touch /etc/authbind/byport/443
+sudo chown rad:rad /etc/authbind/byport/443
+sudo chmod 500 /etc/authbind/byport/443
+cd ~/ai-toolkit-ticketing
+authbind --deep .venv/bin/python serve.py
+```
+
+This `authbind` method grants access to port 443 only. For a systemd service,
+the shipped unit already grants `CAP_NET_BIND_SERVICE`; copy it to
+`/etc/systemd/system/`, change its user and paths for your server, then run
+`sudo systemctl daemon-reload` before starting it. If either TLS file is
+missing, `serve.py` exits 1 instead of serving plaintext.
+
+For an HTTPS-only deployment on the standard port 443, set the server section
+as follows. The certificate and private key must exist in `https/` and be
+readable by the service user:
+
+```ini
+[SERVER]
+http_enabled = false
+http_port = 5000
+bind = 0.0.0.0
+
+[HTTPS]
+enabled = true
+port = 443
+ssl_cert = https/pikachu.crt
+ssl_key = https/pikachu.key
+```
+
+Open port 443 in the firewall. On Rocky/RHEL:
+
+```bash
+sudo firewall-cmd --add-service=https --permanent
+sudo firewall-cmd --reload
+```
+
+On Ubuntu with UFW:
+
+```bash
+sudo ufw allow 443/tcp
+```
 
 **5. Write `.env` in the clone**
 
@@ -273,8 +350,8 @@ git-ignored.
 ```bash
 cat > ~/ai-toolkit-ticketing/.env <<EOF
 TICKETING_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
-TICKETING_DB=/home/rocky/ai-toolkit-ticketing/tickets.sqlite
-TICKETING_CATEGORIES_FILE=/home/rocky/ai-toolkit-ticketing/categories.yml
+TICKETING_DB=$HOME/ai-toolkit-ticketing/tickets.sqlite
+TICKETING_CATEGORIES_FILE=$HOME/ai-toolkit-ticketing/categories.yml
 TICKETING_ADMINS=uzi
 TICKETING_BOOTSTRAP_ADMIN=admin
 EOF
@@ -289,7 +366,7 @@ no `$(...)`, no quotes unless the value contains them. Keep
 
 `migrate_db.py` owns the whole schema, so a fresh install needs nothing but a
 run against a path that doesn't exist yet: it creates the file and applies
-every step in order. Run it as `rocky`, never with sudo, or the database ends
+every step in order. Run it as the service user, never with sudo, or the database ends
 up owned by root and the service can't write to it.
 
 ```bash
@@ -326,15 +403,20 @@ against a half-built database. `ExecStart` then runs `serve.py`, which reads
 If the unit file itself changes in a later `git pull`, copy it over again and
 `sudo systemctl daemon-reload`.
 
-With SELinux enforcing, systemd may refuse to execute an interpreter that lives
-under `/home`. If `systemctl status` shows a permission denial and
-`sudo ausearch -m avc -ts recent` confirms it, label the venv and relabel:
+With SELinux enforcing on Rocky/RHEL, systemd may refuse to execute an
+interpreter that lives under `/home`. If `systemctl status` shows a permission
+denial and `sudo ausearch -m avc -ts recent` confirms it, label the venv and
+relabel:
 
 ```bash
 sudo dnf install -y policycoreutils-python-utils
-sudo semanage fcontext -a -t bin_t '/home/rocky/ai-toolkit-ticketing/.venv/bin(/.*)?'
-sudo restorecon -Rv /home/rocky/ai-toolkit-ticketing
+sudo semanage fcontext -a -t bin_t "$HOME/ai-toolkit-ticketing/.venv/bin(/.*)?"
+sudo restorecon -Rv "$HOME/ai-toolkit-ticketing"
 ```
+
+Ubuntu 22.04/24.04 normally does not use SELinux, so this step is not needed
+there. If SELinux has been enabled manually, apply the equivalent labels before
+starting the unit.
 
 **8. First login**
 
@@ -343,11 +425,16 @@ the journal, once:
 
 ```bash
 sudo journalctl -u rad-ticketing | grep 'generated password'
-curl -sI http://127.0.0.1:5000/login          # expect HTTP/1.1 200 OK
+curl -k -sI https://127.0.0.1/login           # expect HTTP/1.1 200 OK
 ```
 
-Browse to `http://<server>:5000`, log in as `admin`, and change the password at
-`/account/password`.
+Browse to `https://<server>/`, log in as `admin`, and change the password at
+`/account/password`. To open the new-ticket form with a subject preselected,
+use `/tickets/new?ticket_track=toolkit` for Toolkit ticketing or
+`/tickets/new?ticket_track=self_hosted` for Self-hosted ticketing. Use the
+certificate's DNS name rather than the IP address when the certificate does
+not include the server IP; `-k` only ignores certificate verification for a
+local check.
 
 **Day-to-day**
 
@@ -371,9 +458,9 @@ sudo systemctl restart rad-ticketing
 alone, and migrations run on restart.
 
 The unit runs with `ProtectSystem=full`, `PrivateTmp` and
-`ReadWritePaths=/home/rocky/ai-toolkit-ticketing`, so the app can only write
-inside the clone. If you move `TICKETING_DB` elsewhere, add that path to
-`ReadWritePaths` or the service fails on the first write.
+`ReadWritePaths` set to the clone, so the app can only write inside it. If you
+move `TICKETING_DB` elsewhere, add that path to `ReadWritePaths` or the
+service fails on the first write.
 
 ## Behind a reverse proxy
 
@@ -458,10 +545,10 @@ rm -rf ~/ai-toolkit-ticketing          # this deletes the ticket database
 | App exits with `config.ini enables HTTPS but these files are missing` | The paths in `[HTTPS]` are wrong, or the certificate was never generated. Fix the paths or run `scripts/make_self_signed_cert.py`. |
 | The browser warns about the certificate | It's self-signed. Expected for a test pair; use a CA-issued certificate for real use. |
 | `Port 5000 is already in use` | An earlier run is still alive. On Windows: `Get-NetTCPConnection -State Listen -LocalPort 5000`. |
-| Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. `sudo chown rocky:rocky ~/ai-toolkit-ticketing/tickets.sqlite`. |
+| Unit fails with `attempt to write a readonly database` | `tickets.sqlite` was created by root. Run `sudo chown $(id -un):$(id -gn) ~/ai-toolkit-ticketing/tickets.sqlite` using the service account's values. |
 | Unit exits 1 with `config.ini enables HTTPS but these files are missing` | The `ssl_cert`/`ssl_key` paths in `[HTTPS]` are wrong, or the certificate was never generated. |
 | Unit exits 1 with `TLS needs cheroot` | The venv predates the TLS support. `.venv/bin/pip install -r requirements.txt`. |
-| The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `/home/rocky/ai-toolkit-ticketing` and `WorkingDirectory` matches. |
+| The service ignores the port you set | `config.ini` is read from the working directory. Confirm it sits in `~/ai-toolkit-ticketing` and `WorkingDirectory` matches. |
 | Unit fails with `status=203/EXEC` | `.venv` was never built, or was built somewhere other than the clone. Re-run the venv step and check `.venv/bin/python` exists. |
 | Unit fails with `status=200/CHDIR` or permission denied under `/home` | The clone is not at the path in the unit, or `ProtectHome` is back to `yes`. |
 | `.env` values are ignored | systemd needs plain `KEY=value` lines — no `export`, no command substitution. |
