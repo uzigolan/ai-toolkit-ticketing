@@ -94,10 +94,9 @@
       <th class="col-facets">Data &amp; activity</th>
       {{ sort_head('severity', 'Severity', 'col-sev') }}
       {{ sort_head('status', 'Status', 'col-status') }}
+      {{ sort_head('submitter', 'Submitter', 'col-submitter') }}
       {% if list_route == 'my_tickets' or session.get('role') == 'admin' %}
         <th class="col-actions">Actions</th>
-      {% else %}
-        {{ sort_head('submitter', 'Submitter', 'col-submitter') }}
       {% endif %}
       {{ sort_head('updated', 'Updated', 'col-updated') }}
     </tr>
@@ -132,6 +131,7 @@
         <span class="status-pill status-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
         {% if t.status == 'duplicate' %}<div class="form-hint" style="margin:0;">of #{{ t.duplicate_of }}</div>{% endif %}
       </td>
+      <td class="col-submitter">{{ t.submitter_username }}</td>
       {% if list_route == 'my_tickets' %}
         <td class="col-actions">
           {% set settled = t.status in ('verified',) %}
@@ -167,8 +167,6 @@
             <a class="btn btn-ghost btn-sm" href="{{ url_for('ticket_detail', ticket_id=t.id) }}">Open</a>
           </form>
         </td>
-      {% else %}
-        <td class="col-submitter">{{ t.submitter_username }}</td>
       {% endif %}
       <td class="col-updated">
         {{ local_time(t.updated_at, 'date') }}
@@ -177,7 +175,7 @@
     </tr>
     {% else %}
     <tr>
-      <td colspan="9" class="empty-state">
+      <td colspan="10" class="empty-state">
         {% if search_query %}
           Nothing matches &ldquo;{{ search_query }}&rdquo;.
         {% else %}
