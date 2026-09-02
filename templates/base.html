@@ -25,7 +25,7 @@
     </a>
     <div class="app-nav">
       <a class="nav-link {% if request.endpoint == 'new_ticket' %}active{% endif %}"
-         href="{{ url_for('new_ticket') }}">Submit</a>
+         href="{{ url_for('new_ticket') }}">New Ticket</a>
       <a class="nav-link {% if request.endpoint == 'all_tickets' %}active{% endif %}"
          href="{{ url_for('all_tickets') }}">All tickets</a>
       <a class="nav-link {% if request.endpoint == 'my_tickets' %}active{% endif %}"
