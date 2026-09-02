@@ -450,8 +450,10 @@ def _ticket_form_error(data: dict) -> str:
         return "Choose which toolkit this ticket is about."
     if not data["categories"]:
         return "Pick at least one category — what went wrong?"
-    if not data["description"]:
-        return "Paste the chat, or at least the prompt, before submitting."
+    if not data["transcript"]:
+        return "Paste the whole chat before submitting."
+    if not data["toolkit_version"]:
+        return "Add the toolkit version output before submitting."
     return ""
 
 

@@ -14,7 +14,7 @@
 
 {% if ticket.prompt or ticket.transcript %}
 <div class="copy-bar">
-  {% if ticket.prompt and ticket.transcript %}
+  {% if ticket.transcript %}
     <button type="button" class="btn btn-primary btn-sm" data-copy-target="#copy-all-text">
       Copy for dev chat
     </button>
@@ -30,7 +30,7 @@
     </button>
   {% endif %}
   <span class="form-hint" style="margin:0;">
-    Copies the toolkit, the prompt and the whole chat, ready to paste into a development chat.
+    Copies the toolkit, prompt, whole chat, version, and suggested fix, ready to paste into a development chat.
   </span>
 </div>
 
@@ -43,7 +43,17 @@ PROMPT
 {{ ticket.prompt }}
 
 CHAT
-{{ ticket.transcript }}</textarea>
+{{ ticket.transcript }}
+{% if ticket.toolkit_version %}
+
+TOOLKIT VERSION
+{{ ticket.toolkit_version }}
+{% endif %}
+{% if ticket.suggestion %}
+
+SUGGESTED FIX / RIGHT ANSWER
+{{ ticket.suggestion }}
+{% endif %}</textarea>
 {% endif %}
 
 {% if ticket.resolution %}

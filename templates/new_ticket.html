@@ -111,7 +111,7 @@
     </div>
 
     <div class="form-field track-toolkit">
-      <label for="prompt">The prompt you used</label>
+      <label for="prompt">The prompt you used <span class="label-optional">optional</span></label>
       <span class="form-hint">
         Just the request you gave the agent, on its own — not the whole conversation.
         Keeping it separate means it can be re-run against a fixed build to prove the
@@ -128,7 +128,7 @@
         here with Ctrl+V. No need to trim or summarize it — the whole conversation is
         more useful than the part you think matters.
       </span>
-      <textarea class="form-control paste-area" id="transcript" name="transcript"
+      <textarea class="form-control paste-area" id="transcript" name="transcript" required
                 placeholder="Right-click in Copilot chat → Copy All → paste here...">{{ form.get('transcript', '') }}</textarea>
     </div>
 
@@ -246,6 +246,7 @@
     var versionHint = document.getElementById("toolkit_version").previousElementSibling;
     var prompt = document.getElementById("prompt");
     var transcript = document.getElementById("transcript");
+    var toolkitVersion = document.getElementById("toolkit_version");
 
     function trackValue() {
       var checked = form.querySelector('input[name="ticket_track"]:checked');
@@ -256,6 +257,8 @@
       var selfHosted = trackValue() === "self_hosted";
       toolkitBlocks.forEach(function (el) { el.style.display = selfHosted ? "none" : ""; });
       if (selfHostedBlock) { selfHostedBlock.style.display = selfHosted ? "" : "none"; }
+      transcript.required = !selfHosted;
+      toolkitVersion.required = !selfHosted;
       if (versionLabel) {
         versionLabel.textContent = selfHosted ? "Platform/model version output" : "Version output of the toolkit";
       }
@@ -277,9 +280,8 @@
         if (!form.querySelector('input[name="categories"]:checked')) {
           missing.push("what went wrong");
         }
-        if (!prompt.value.trim() && !transcript.value.trim()) {
-          missing.push("the prompt or the pasted chat");
-        }
+        if (!transcript.value.trim()) { missing.push("the pasted chat"); }
+        if (!toolkitVersion.value.trim()) { missing.push("toolkit version output"); }
       }
       button.disabled = missing.length > 0;
       hint.textContent = missing.length ? "Still needed: " + missing.join(", ") + "." : "";
